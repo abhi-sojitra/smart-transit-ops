@@ -69,7 +69,7 @@ export const NAV_ITEMS: NavItem[] = [
       },
     ],
   },
-  {
+{
     title: 'Analytics',
     href: '/analytics',
     icon: BarChart3,
@@ -80,6 +80,19 @@ export const NAV_ITEMS: NavItem[] = [
     href: '/reports',
     icon: FileText,
     permissions: ['REPORTS:VIEW'],
+    children: [
+      { title: 'Overview', href: '/reports', icon: FileText, permissions: ['REPORTS:VIEW'] },
+      { title: 'Executive', href: '/reports/executive', icon: FileText, permissions: ['REPORTS:VIEW'] },
+      { title: 'Fleet', href: '/reports/fleet', icon: Truck, permissions: ['REPORTS:VIEW'] },
+      { title: 'Drivers', href: '/reports/drivers', icon: Users, permissions: ['REPORTS:VIEW'] },
+      { title: 'Vehicles', href: '/reports/vehicles', icon: Truck, permissions: ['REPORTS:VIEW'] },
+      { title: 'Trips', href: '/reports/trips', icon: Route, permissions: ['REPORTS:VIEW'] },
+      { title: 'Maintenance', href: '/reports/maintenance', icon: Wrench, permissions: ['REPORTS:VIEW'] },
+      { title: 'Fuel', href: '/reports/fuel', icon: Fuel, permissions: ['REPORTS:VIEW'] },
+      { title: 'Expenses', href: '/reports/expenses', icon: Receipt, permissions: ['REPORTS:VIEW'] },
+      { title: 'Financial', href: '/reports/financial', icon: BarChart3, permissions: ['REPORTS:VIEW'] },
+      { title: 'Profitability', href: '/reports/profitability', icon: BarChart3, permissions: ['REPORTS:VIEW'] },
+    ],
   },
   {
     title: 'Settings',
