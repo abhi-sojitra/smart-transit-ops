@@ -1,58 +1,95 @@
 'use client';
 
-import { useForm } from 'react-hook-form';
-import { z } from 'zod';
-import { zodResolver } from '@hookform/resolvers/zod';
-import type { ColumnDef } from '@tanstack/react-table';
-import type { MaintenanceRecord } from '@transitops/shared-types';
+import { useMemo, useState } from 'react';
+import Link from 'next/link';
+import { Plus, Wrench } from 'lucide-react';
 import { PageHeader } from '@/components/layout/page-header';
 import { Breadcrumb } from '@/components/layout/breadcrumb';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { FormField } from '@/components/forms/form-field';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { DataTable } from '@/components/data-table/data-table';
-import { mockMaintenance } from '@/constants/mock-data';
-
-const schema = z.object({
-  vehicleId: z.string().min(1, 'Vehicle is required'),
-  serviceType: z.string().min(1, 'Service type is required'),
-  cost: z.string().min(1, 'Cost is required'),
-  date: z.string().min(1, 'Date is required'),
-  notes: z.string().optional(),
-});
-
-type Values = z.infer<typeof schema>;
-
-const columns: ColumnDef<MaintenanceRecord>[] = [
-  { accessorKey: 'vehicleId', header: 'Vehicle ID' },
-  { accessorKey: 'serviceType', header: 'Service Type' },
-  {
-    accessorKey: 'status',
-    header: 'Status',
-    cell: ({ row }) => (
-      <Badge status={row.original.status}>{row.original.status.replaceAll('_', ' ')}</Badge>
-    ),
-  },
-  { accessorKey: 'date', header: 'Date' },
-  {
-    accessorKey: 'cost',
-    header: 'Cost',
-    cell: ({ row }) => `$${row.original.cost.toFixed(2)}`,
-  },
-];
+import { EmptyState } from '@/components/feedback/empty-state';
+import { ConfirmationDialog } from '@/components/feedback/confirmation-dialog';
+import {
+  CloseMaintenanceDialog,
+  MaintenanceCard,
+  MaintenanceFilters,
+  MaintenanceLoadingSkeleton,
+  MaintenanceStatisticsCards,
+  MaintenanceTable,
+} from '@/components/maintenance';
+import {
+  useCancelMaintenance,
+  useCompleteMaintenance,
+  useDeleteMaintenance,
+  useMaintenanceList,
+  useMaintenanceStatistics,
+  useMaintenanceVehicles,
+  useStartMaintenance,
+} from '@/hooks/use-maintenance';
+import type { Maintenance, MaintenanceListParams } from '@/types/maintenance';
 
 export default function MaintenancePage() {
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    reset,
-  } = useForm<Values>({
-    resolver: zodResolver(schema),
+  const [filters, setFilters] = useState<MaintenanceListParams>({
+    page: 1,
+    limit: 10,
+    sortBy: 'createdAt',
+    sortOrder: 'desc',
   });
+  const [completeTarget, setCompleteTarget] = useState<Maintenance | null>(null);
+  const [cancelTarget, setCancelTarget] = useState<Maintenance | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Maintenance | null>(null);
+
+  const listQuery = useMaintenanceList(filters);
+  const statsQuery = useMaintenanceStatistics();
+  const vehiclesQuery = useMaintenanceVehicles();
+  const startMutation = useStartMaintenance();
+  const completeMutation = useCompleteMaintenance();
+  const cancelMutation = useCancelMaintenance();
+  const deleteMutation = useDeleteMaintenance();
+
+  const rows = listQuery.data?.data ?? [];
+  const meta = listQuery.data?.meta;
+
+  const mobileCards = useMemo(() => rows.slice(0, 20), [rows]);
+
+  if (listQuery.isLoading && statsQuery.isLoading) {
+    return (
+      <div className="space-y-6">
+        <Breadcrumb items={[{ label: 'Home', href: '/dashboard' }, { label: 'Maintenance' }]} />
+        <MaintenanceLoadingSkeleton />
+      </div>
+    );
+  }
+
+  if (listQuery.isError) {
+    return (
+      <div className="space-y-6">
+        <Breadcrumb items={[{ label: 'Home', href: '/dashboard' }, { label: 'Maintenance' }]} />
+        <EmptyState
+          icon={Wrench}
+          title="Unable to load maintenance"
+          description={
+            listQuery.error instanceof Error && listQuery.error.message.includes('401')
+              ? 'Sign in required. Use admin@transitops.com / Admin@12345 then reopen Maintenance.'
+              : listQuery.error instanceof Error
+                ? listQuery.error.message
+                : 'Check API connectivity and authentication.'
+          }
+          actionLabel={
+            listQuery.error instanceof Error && listQuery.error.message.includes('401')
+              ? 'Go to Sign In'
+              : 'Retry'
+          }
+          onAction={() => {
+            if (listQuery.error instanceof Error && listQuery.error.message.includes('401')) {
+              window.location.href = '/login';
+              return;
+            }
+            void listQuery.refetch();
+          }}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -60,55 +97,93 @@ export default function MaintenancePage() {
         <Breadcrumb items={[{ label: 'Home', href: '/dashboard' }, { label: 'Maintenance' }]} />
         <PageHeader
           title="Maintenance"
-          description="Log service work and track upcoming tasks."
+          description="Preventive and corrective work orders with vehicle status automation."
+          actions={
+            <Button asChild>
+              <Link href="/maintenance/new">
+                <Plus className="h-4 w-4" />
+                New Maintenance
+              </Link>
+            </Button>
+          }
         />
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[1fr_1.4fr]">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">New Maintenance Entry</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form
-              className="space-y-4"
-              onSubmit={handleSubmit(() => {
-                reset();
-              })}
-            >
-              <FormField label="Vehicle ID" htmlFor="vehicleId" error={errors.vehicleId?.message}>
-                <Input id="vehicleId" placeholder="VH-1001" {...register('vehicleId')} />
-              </FormField>
-              <FormField
-                label="Service Type"
-                htmlFor="serviceType"
-                error={errors.serviceType?.message}
-              >
-                <Input id="serviceType" placeholder="Oil Change" {...register('serviceType')} />
-              </FormField>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <FormField label="Cost" htmlFor="cost" error={errors.cost?.message}>
-                  <Input id="cost" placeholder="420" {...register('cost')} />
-                </FormField>
-                <FormField label="Date" htmlFor="date" error={errors.date?.message}>
-                  <Input id="date" type="date" {...register('date')} />
-                </FormField>
-              </div>
-              <FormField label="Notes" htmlFor="notes" description="Optional service notes">
-                <Textarea id="notes" {...register('notes')} />
-              </FormField>
-              <Button type="submit" className="w-full">
-                Save Entry
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+      <MaintenanceStatisticsCards stats={statsQuery.data} loading={statsQuery.isLoading} />
 
-        <div>
-          <h2 className="mb-3 text-sm font-medium text-muted-foreground">Upcoming & History</h2>
-          <DataTable columns={columns} data={mockMaintenance} searchPlaceholder="Search maintenance..." />
-        </div>
+      <MaintenanceFilters
+        value={filters}
+        vehicles={vehiclesQuery.data ?? []}
+        onChange={setFilters}
+      />
+
+      <div className="hidden md:block">
+        <MaintenanceTable
+          data={rows}
+          meta={meta}
+          loading={listQuery.isFetching}
+          onPageChange={(page) => setFilters((prev) => ({ ...prev, page }))}
+          onStart={(row) => startMutation.mutate(row.id)}
+          onComplete={setCompleteTarget}
+          onCancel={setCancelTarget}
+          onDelete={setDeleteTarget}
+        />
       </div>
+
+      <div className="grid gap-3 md:hidden">
+        {mobileCards.length ? (
+          mobileCards.map((item) => <MaintenanceCard key={item.id} item={item} />)
+        ) : (
+          <EmptyState title="No maintenance records" description="Create a work order to get started." />
+        )}
+      </div>
+
+      <CloseMaintenanceDialog
+        open={Boolean(completeTarget)}
+        onOpenChange={(open) => !open && setCompleteTarget(null)}
+        estimatedCost={completeTarget?.estimatedCost}
+        loading={completeMutation.isPending}
+        onConfirm={(payload) => {
+          if (!completeTarget) return;
+          completeMutation.mutate(
+            { id: completeTarget.id, ...payload },
+            { onSuccess: () => setCompleteTarget(null) },
+          );
+        }}
+      />
+
+      <ConfirmationDialog
+        open={Boolean(cancelTarget)}
+        onOpenChange={(open) => !open && setCancelTarget(null)}
+        title="Cancel maintenance?"
+        description="This restores vehicle availability if no other active work remains."
+        confirmLabel="Cancel work order"
+        variant="danger"
+        loading={cancelMutation.isPending}
+        onConfirm={() => {
+          if (!cancelTarget) return;
+          cancelMutation.mutate(
+            { id: cancelTarget.id },
+            { onSuccess: () => setCancelTarget(null) },
+          );
+        }}
+      />
+
+      <ConfirmationDialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        title="Delete maintenance?"
+        description="Soft-deletes the record. Active jobs will restore vehicle status."
+        confirmLabel="Delete"
+        variant="danger"
+        loading={deleteMutation.isPending}
+        onConfirm={() => {
+          if (!deleteTarget) return;
+          deleteMutation.mutate(deleteTarget.id, {
+            onSuccess: () => setDeleteTarget(null),
+          });
+        }}
+      />
     </div>
   );
 }

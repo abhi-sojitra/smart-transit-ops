@@ -2,7 +2,9 @@ import type { RoleCode } from './auth';
 import type {
   CargoType,
   ExpenseStatus,
+  MaintenancePriority,
   MaintenanceStatus,
+  MaintenanceType,
   TripStatus,
   UserAccountStatus,
   VehicleStatus,
@@ -88,6 +90,16 @@ export interface TripStatistics {
   distanceTravelled: number;
 }
 
+export interface MaintenanceAttachment {
+  filename: string;
+  originalName: string;
+  mimeType: string;
+  size: number;
+  url: string;
+  uploadedAt: string;
+}
+
+/** @deprecated Prefer Maintenance — kept for scaffold mock compatibility */
 export interface MaintenanceRecord {
   id: string;
   vehicleId: string;
@@ -96,6 +108,46 @@ export interface MaintenanceRecord {
   date: string;
   cost: number;
   notes?: string;
+}
+
+export interface Maintenance {
+  id: string;
+  vehicleId: string;
+  vehicleNumber?: string;
+  vehicleModel?: string;
+  maintenanceNumber: string;
+  maintenanceType: MaintenanceType;
+  title: string;
+  description?: string;
+  priority: MaintenancePriority;
+  status: MaintenanceStatus;
+  startDate: string;
+  expectedCompletionDate: string;
+  completedDate?: string;
+  estimatedCost: number;
+  actualCost?: number;
+  vendorName?: string;
+  vendorPhone?: string;
+  serviceCenter?: string;
+  odometerReading?: number;
+  nextServiceDue?: string;
+  attachments: MaintenanceAttachment[];
+  notes?: string;
+  createdBy?: string;
+  updatedBy?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MaintenanceStatistics {
+  totalRecords: number;
+  active: number;
+  completed: number;
+  overdue: number;
+  vehiclesInShop: number;
+  costThisMonth: number;
+  costThisYear: number;
+  averageRepairTimeDays: number;
 }
 
 export interface FuelExpense {

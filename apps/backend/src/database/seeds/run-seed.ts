@@ -10,6 +10,7 @@ import { buildDemoDrivers } from '../../modules/driver/seeds/driver.seed';
 import { DEFAULT_ROLES } from './roles.seed';
 import { TEST_USERS } from './test-users.seed';
 import { seedTripDispatcherData } from './trip.seed';
+import { seedMaintenanceAndVehicles } from './maintenance.seed';
 
 loadEnv({ path: resolve(__dirname, '../../../.env') });
 
@@ -88,6 +89,7 @@ async function runSeed() {
     );
   }
 
+  await seedMaintenanceAndVehicles(mongoose);
   await seedTripDispatcherData(mongoose);
 
   console.log('Seed completed successfully.');

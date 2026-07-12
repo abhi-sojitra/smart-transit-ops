@@ -36,7 +36,12 @@ export class CostCalculationService {
             ? { vehicleId: vehicleId.toUpperCase(), isDeleted: { $ne: true } }
             : { isDeleted: { $ne: true } },
         },
-        { $group: { _id: null, total: { $sum: '$cost' } } },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: { $ifNull: ['$actualCost', '$estimatedCost'] } },
+          },
+        },
       ]),
     ]);
 
@@ -111,8 +116,13 @@ export class CostCalculationService {
         { $match: { vehicleId: normalizedVehicleId, isDeleted: { $ne: true } } },
         {
           $group: {
-            _id: { $dateToString: { format: '%Y-%m', date: '$date' } },
-            maintenanceCost: { $sum: '$cost' },
+            _id: {
+              $dateToString: {
+                format: '%Y-%m',
+                date: { $ifNull: ['$completedDate', '$startDate'] },
+              },
+            },
+            maintenanceCost: { $sum: { $ifNull: ['$actualCost', '$estimatedCost'] } },
           },
         },
         { $sort: { _id: 1 } },

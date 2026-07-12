@@ -1,22 +1,22 @@
 # TransitOps
 
-Enterprise Fleet & Transport Management System — Yarn workspaces monorepo.
+Enterprise Fleet & Transport Management System.
 
-## Structure
+## Apps
 
-```text
-apps/frontend   Next.js App Router UI
-apps/backend    NestJS API
-packages/       shared-types, eslint-config, tsconfig
-```
+- `apps/frontend` — Next.js 15 dashboard
+- `apps/backend` — NestJS API
+- `packages/shared-types` — shared enums & contracts
 
-## Prerequisites
+## Maintenance Module
 
-- Node.js 20+
-- Yarn 1.x
-- MongoDB (local or remote)
+Full stack Maintenance Management is implemented:
 
-## Setup
+- Backend: `apps/backend/src/modules/maintenance/`
+- Frontend: `apps/frontend/src/app/(protected)/maintenance/`
+- Docs: [Maintenance README](apps/backend/src/modules/maintenance/README.md)
+
+### Quick start
 
 ```bash
 yarn install
@@ -38,9 +38,10 @@ yarn dev:backend
 - Frontend: http://localhost:3000
 - Backend API: http://localhost:4000/api
 - Swagger: http://localhost:4000/api/docs
+- Maintenance UI: http://localhost:3000/maintenance
 - Trips UI: http://localhost:3000/trips
 
-## Seed (roles, admin, drivers, fleet, 50 trips)
+## Seed (roles, admin, drivers, fleet, maintenance, trips)
 
 ```bash
 yarn workspace @transitops/backend seed
@@ -91,6 +92,7 @@ See [`apps/backend/src/modules/trip/README.md`](apps/backend/src/modules/trip/RE
 - **Fuel & Expense Management** is fully implemented with CRUD APIs, analytics, and UI.
 - **Trip Dispatcher** is fully wired (API + UI) and integrates with Vehicle, Driver, and Maintenance services.
 - **Driver Module** is fully implemented.
+- **Maintenance Module** is fully implemented (CRUD, workflow, vehicle status automation).
 - If fuel/expense APIs return **404**, restart the backend so it loads the latest modules:
   ```bash
   # stop any old process on port 4000, then:

@@ -38,10 +38,7 @@ function processQueue(error: unknown, token: string | null) {
 
 function isAuthPublicPath(url?: string) {
   if (!url) return false;
-  return (
-    url.includes('/auth/login') ||
-    url.includes('/auth/refresh')
-  );
+  return url.includes('/auth/login') || url.includes('/auth/refresh');
 }
 
 function redirectToLogin() {
@@ -52,7 +49,7 @@ function redirectToLogin() {
 
 apiClient.interceptors.request.use((config) => {
   const token = useAuthStore.getState().accessToken;
-  if (token) {
+  if (token && token !== 'stub-access-token') {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;

@@ -9,12 +9,10 @@ import {
   DriverStatus,
   LicenseStatus,
   TripStatus,
-  MaintenanceStatus,
 } from '@transitops/shared-types';
 import { VehicleSchema } from '../../schemas/vehicle.schema';
 import { DriverSchema } from '../../schemas/driver.schema';
 import { TripSchema } from '../../schemas/trip.schema';
-import { MaintenanceSchema } from '../../schemas/maintenance.schema';
 import { FuelSchema } from '../../schemas/fuel.schema';
 import { ExpenseSchema } from '../../schemas/expense.schema';
 import { UserSchema } from '../../schemas/user.schema';
@@ -152,7 +150,6 @@ async function seedFuelExpense() {
   const VehicleModel = mongoose.model('Vehicle', VehicleSchema);
   const DriverModel = mongoose.model('Driver', DriverSchema);
   const TripModel = mongoose.model('Trip', TripSchema);
-  const MaintenanceModel = mongoose.model('Maintenance', MaintenanceSchema);
   const FuelModel = mongoose.model('Fuel', FuelSchema);
   const ExpenseModel = mongoose.model('Expense', ExpenseSchema);
   const UserModel = mongoose.model('User', UserSchema);
@@ -222,21 +219,7 @@ async function seedFuelExpense() {
     );
   }
 
-  for (let i = 1; i <= 20; i++) {
-    await MaintenanceModel.findOneAndUpdate(
-      { vehicleId: randomItem(vehicleIds), serviceType: `Service-${i}`, date: randomDate(180) },
-      {
-        $set: {
-          vehicleId: randomItem(vehicleIds),
-          serviceType: randomItem(['Oil Change', 'Brake Service', 'Tire Rotation', 'Engine Tune']),
-          status: MaintenanceStatus.COMPLETED,
-          date: randomDate(180),
-          cost: randomAmount(100, 2500),
-        },
-      },
-      { upsert: true },
-    );
-  }
+  // Maintenance docs are seeded via maintenance.seed.ts into the `maintenance` collection.
 
   console.log('Seeding demo fuel logs (predictable test entries)...');
   await FuelModel.deleteMany({});

@@ -27,7 +27,7 @@ export class Vehicle {
   @Prop({ trim: true })
   type?: string;
 
-  @Prop({ enum: VehicleStatus, default: VehicleStatus.AVAILABLE })
+  @Prop({ type: String, enum: VehicleStatus, default: VehicleStatus.AVAILABLE })
   status!: VehicleStatus;
 
   @Prop({ required: true, min: 0, default: 0 })
