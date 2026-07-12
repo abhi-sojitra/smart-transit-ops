@@ -5,3 +5,4 @@ export * from './domain';
 export * from './driver';
 export * from './vehicle';
 export * from './fuel-expense';
+export * from './dashboard';

@@ -86,8 +86,8 @@ export class TripService {
       throw new BadRequestException('Only draft trips can be updated');
     }
 
-    const vehicleId = dto.vehicleId ?? String(trip.vehicleId);
-    const driverId = dto.driverId ?? String(trip.driverId);
+    const vehicleId = dto.vehicleId ?? this.refId(trip.vehicleId);
+    const driverId = dto.driverId ?? this.refId(trip.driverId);
     const cargoWeight = dto.cargoWeight ?? trip.cargoWeight;
     const plannedStartDate = dto.plannedStartDate
       ? new Date(dto.plannedStartDate)
@@ -239,12 +239,22 @@ export class TripService {
     return result;
   }
 
-  getAvailableVehicles() {
-    return this.vehicleService.findAvailable();
+  async getAvailableVehicles() {
+    const [vehicles, busyIds] = await Promise.all([
+      this.vehicleService.findAvailable(),
+      this.trips.findBusyVehicleIds(),
+    ]);
+    const busy = new Set(busyIds);
+    return vehicles.filter((vehicle) => !busy.has(String(vehicle._id)));
   }
 
-  getAvailableDrivers() {
-    return this.driverService.getAvailableDrivers();
+  async getAvailableDrivers() {
+    const [drivers, busyIds] = await Promise.all([
+      this.driverService.getAvailableDrivers(),
+      this.trips.findBusyDriverIds(),
+    ]);
+    const busy = new Set(busyIds);
+    return drivers.filter((driver) => !busy.has(String(driver.id ?? driver._id)));
   }
 
   async getTripStatistics(user?: JwtPayload) {

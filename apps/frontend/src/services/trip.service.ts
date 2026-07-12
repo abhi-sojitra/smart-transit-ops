@@ -89,20 +89,31 @@ export const tripService = {
     return unwrap(data);
   },
 
-  async availableVehicles() {
-    const { data } = await apiClient.get('/trips/available/vehicles');
-    return unwrap(data) as Array<{
+  async availableVehicles(): Promise<
+    Array<{
       _id: string;
       vehicleId: string;
+      make?: string;
+      model: string;
+      maxCapacity: number;
+      status: string;
+    }>
+  > {
+    const { data } = await apiClient.get('/trips/available/vehicles');
+    const list = unwrap(data) as Array<{
+      _id: string;
+      vehicleId: string;
+      make?: string;
       model: string;
       maxCapacity: number;
       status: string;
     }>;
+    return Array.isArray(list) ? list : [];
   },
 
   async availableDrivers() {
     const { data } = await apiClient.get('/trips/available/drivers');
-    return unwrap(data) as Array<{
+    const list = unwrap(data) as Array<{
       id: string;
       _id?: string;
       firstName: string;
@@ -113,5 +124,6 @@ export const tripService = {
       status: string;
       licenseStatus?: string;
     }>;
+    return Array.isArray(list) ? list : [];
   },
 };
