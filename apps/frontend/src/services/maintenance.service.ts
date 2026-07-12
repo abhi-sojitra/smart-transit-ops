@@ -69,7 +69,8 @@ export const maintenanceService = {
   },
 
   async update(id: string, payload: Partial<MaintenanceFormValues>): Promise<Maintenance> {
-    const { vehicleId: _v, ...rest } = payload;
+    const { vehicleId: _, ...rest } = payload;
+    void _;
     const { data } = await apiClient.patch(`/maintenance/${id}`, sanitizePayload(rest));
     return unwrap<Maintenance>(data);
   },

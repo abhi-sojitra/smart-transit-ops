@@ -3,7 +3,6 @@
 import {
   CheckCircle2,
   Clock,
-  DollarSign,
   Wallet,
   XCircle,
   type LucideIcon,

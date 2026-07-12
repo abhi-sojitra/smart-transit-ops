@@ -15,7 +15,7 @@ import { FormField } from '@/components/forms/form-field';
 import { InputAffix } from '@/components/ui/input-affix';
 import { CharacterCountTextarea } from '@/components/ui/character-count-textarea';
 import { DEFAULT_FORM_OPTIONS, FORM_LIMITS, PLACEHOLDERS } from '@/constants/form';
-import { positiveDecimal, sanitizeTextInput } from '@/utils/form-sanitize';
+import { positiveDecimal } from '@/utils/form-sanitize';
 import { enhanceRegister } from '@/utils/form-register';
 import { nonNegativeAmountField } from '@/utils/form-validation';
 import type { TripRecord } from '@/types/trip';

@@ -8,7 +8,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { FuelTypeBadge } from '@/components/fuel/fuel-type-badge';
 import { staggerItem } from '@/components/drivers/motion';
-import { cn } from '@/utils/cn';
 import { formatDisplayDate } from '@/utils/date';
 import { costBarPercent, formatFuelCost, getFuelInitials } from '@/components/fuel/fuel-display';
 

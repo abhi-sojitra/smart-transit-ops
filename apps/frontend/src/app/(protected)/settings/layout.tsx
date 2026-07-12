@@ -5,7 +5,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
     <div className="space-y-6">
       <div className="grid gap-6 lg:grid-cols-[220px_1fr]">
         <aside className="lg:sticky lg:top-4 lg:self-start">
-          <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <p className="mb-2 px-3 text-sm font-semibold text-slate-900 dark:text-slate-100">
             Administration
           </p>
           <SettingsNav />

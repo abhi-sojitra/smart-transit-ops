@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Check, ChevronDown, Minus } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import type { PermissionItem } from '@transitops/shared-types';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/utils/cn';
@@ -18,8 +18,13 @@ interface PrivilegeChecklistProps {
   onToggleModule: (module: string, enabled: boolean) => void;
 }
 
+/** Title-case labels so catalog codes like FUEL / CREATE read as Fuel / Create. */
 function formatLabel(value: string) {
-  return value.replaceAll('_', ' ').replaceAll('.', ' · ');
+  return value
+    .toLowerCase()
+    .replaceAll('_', ' ')
+    .replaceAll('.', ' · ')
+    .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
 export function PrivilegeChecklist({
@@ -60,7 +65,7 @@ export function PrivilegeChecklist({
 
   if (!modules.length) {
     return (
-      <div className="rounded-xl border border-dashed border-border px-4 py-10 text-center text-sm text-muted-foreground">
+      <div className="rounded-xl border border-dashed border-border px-4 py-10 text-center text-base font-medium text-slate-700 dark:text-slate-200">
         {viewFilter === 'assigned'
           ? 'No assigned privileges for this role.'
           : viewFilter === 'unassigned'
@@ -73,8 +78,6 @@ export function PrivilegeChecklist({
   return (
     <div className="space-y-3">
       {modules.map(([module, items]) => {
-        // Module totals always come from full catalog for that module (not filtered view),
-        // so header checkbox state stays correct while editing.
         const moduleAllCodes = permissions
           .filter((p) => p.module === module)
           .map((p) => p.code);
@@ -86,9 +89,9 @@ export function PrivilegeChecklist({
         return (
           <section
             key={module}
-            className="overflow-hidden rounded-xl border border-border bg-card"
+            className="overflow-hidden rounded-xl border border-slate-200 bg-card dark:border-slate-700"
           >
-            <div className="flex items-center gap-3 border-b border-border bg-muted/30 px-4 py-3">
+            <div className="flex items-center gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-900/50">
               <Checkbox
                 checked={allOn ? true : someOn ? 'indeterminate' : false}
                 disabled={disabled}
@@ -103,15 +106,16 @@ export function PrivilegeChecklist({
                 }
               >
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold capitalize">{formatLabel(module)}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {selectedCount} assigned · {moduleAllCodes.length - selectedCount} not
-                    assigned
+                  <p className="text-base font-semibold text-slate-900 dark:text-slate-50">
+                    {formatLabel(module)}
+                  </p>
+                  <p className="mt-0.5 text-sm font-medium text-slate-700 dark:text-slate-300">
+                    {selectedCount} of {moduleAllCodes.length} assigned
                   </p>
                 </div>
                 <ChevronDown
                   className={cn(
-                    'h-4 w-4 shrink-0 text-muted-foreground transition-transform',
+                    'h-4 w-4 shrink-0 text-slate-700 transition-transform dark:text-slate-300',
                     isCollapsed && '-rotate-90',
                   )}
                 />
@@ -119,14 +123,14 @@ export function PrivilegeChecklist({
             </div>
 
             {!isCollapsed ? (
-              <ul className="divide-y divide-border">
+              <ul className="divide-y divide-slate-100 dark:divide-slate-800">
                 {items.map((permission) => {
                   const checked = selectedSet.has(permission.code);
                   return (
                     <li key={permission.code}>
                       <div
                         className={cn(
-                          'flex items-start gap-3 px-4 py-3 transition-colors hover:bg-muted/30',
+                          'flex items-start gap-3 px-4 py-3.5 transition-colors hover:bg-slate-50 dark:hover:bg-slate-900/40',
                           disabled && 'opacity-70',
                         )}
                       >
@@ -148,28 +152,14 @@ export function PrivilegeChecklist({
                             onToggle(permission.code, !checked);
                           }}
                         >
-                          <span className="flex flex-wrap items-center gap-2">
-                            <span className="text-sm font-medium capitalize">
-                              {formatLabel(permission.action)}
+                          <span className="block text-base font-semibold text-slate-900 dark:text-slate-50">
+                            {formatLabel(permission.action)}
+                          </span>
+                          {permission.description ? (
+                            <span className="mt-1 block text-sm font-medium leading-snug text-slate-700 dark:text-slate-300">
+                              {permission.description}
                             </span>
-                            {checked ? (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
-                                <Check className="h-3 w-3" />
-                                Assigned
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                                <Minus className="h-3 w-3" />
-                                Not assigned
-                              </span>
-                            )}
-                          </span>
-                          <span className="mt-1 block text-xs text-muted-foreground">
-                            {permission.description || permission.code}
-                          </span>
-                          <span className="mt-1 block font-mono text-[11px] text-muted-foreground/80">
-                            {permission.code}
-                          </span>
+                          ) : null}
                         </button>
                       </div>
                     </li>

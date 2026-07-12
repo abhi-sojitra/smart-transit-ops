@@ -114,7 +114,7 @@ export class DashboardService {
   async getRecentTrips(limit = 10): Promise<RecentTripItem[]> {
     const rows = await this.dashboardRepository.getRecentTrips(limit);
     return rows
-      .map((row) => {
+      .map((row): RecentTripItem | null => {
         const plannedStartDate =
           this.safeToIso(row.plannedStartDate) ?? this.safeToIso(row.createdAt);
         if (!plannedStartDate) return null;
@@ -127,8 +127,8 @@ export class DashboardService {
           status: String(row.status),
           plannedStartDate,
           revenue: Number(row.revenue ?? 0),
-          driverName: row.driverName ? String(row.driverName) : undefined,
-          vehicleLabel: row.vehicleLabel ? String(row.vehicleLabel) : undefined,
+          ...(row.driverName ? { driverName: String(row.driverName) } : {}),
+          ...(row.vehicleLabel ? { vehicleLabel: String(row.vehicleLabel) } : {}),
         };
       })
       .filter((row): row is RecentTripItem => row !== null);

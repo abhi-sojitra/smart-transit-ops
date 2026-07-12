@@ -45,6 +45,13 @@ function normalizeGranted(raw: string[] | undefined, catalogCodes: string[]): st
   return source.filter((code) => catalog.has(code));
 }
 
+function formatModuleLabel(value: string) {
+  return value
+    .toLowerCase()
+    .replaceAll('_', ' ')
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
 export default function SettingsPermissionsPage() {
   const [search, setSearch] = useState('');
   const [viewFilter, setViewFilter] = useState<PrivilegeViewFilter>('assigned');
@@ -181,7 +188,7 @@ export default function SettingsPermissionsPage() {
         />
         <PageHeader
           title="Role privileges"
-          description="Assigned privileges are checked. Use filters to inspect not-assigned privileges, then save."
+          description="Select a role, review its privileges, then save your changes."
           actions={
             <Button asChild variant="outline">
               <Link href="/settings/roles">Back to roles</Link>
@@ -192,10 +199,10 @@ export default function SettingsPermissionsPage() {
 
       <div className="grid gap-6 lg:grid-cols-[300px_minmax(0,1fr)]">
         <aside className="space-y-3 lg:sticky lg:top-4 lg:self-start">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <p className="mb-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
             Roles
           </p>
-          <div className="overflow-hidden rounded-xl border border-border bg-card">
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-card dark:border-slate-700">
             {rolesQuery.isLoading || matrixQuery.isLoading ? (
               <div className="space-y-2 p-3">
                 {Array.from({ length: 5 }).map((_, index) => (
@@ -205,7 +212,7 @@ export default function SettingsPermissionsPage() {
             ) : !roles.length ? (
               <EmptyState title="No roles" className="py-8" />
             ) : (
-              <ul className="divide-y divide-border">
+              <ul className="divide-y divide-slate-100 dark:divide-slate-800">
                 {roles.map((role) => {
                   const active = role.id === editRoleId;
                   const full =
@@ -214,9 +221,8 @@ export default function SettingsPermissionsPage() {
                   const assigned = full
                     ? totalPermissions
                     : resolveRolePermissions(role).length;
-                  const missing = Math.max(totalPermissions - assigned, 0);
                   const assignedModules = full
-                    ? 'All modules'
+                    ? null
                     : (() => {
                         const codes = new Set(resolveRolePermissions(role));
                         const modules = Array.from(
@@ -225,11 +231,12 @@ export default function SettingsPermissionsPage() {
                               .filter((p) => codes.has(p.code))
                               .map((p) => p.module),
                           ),
+                        ).map(formatModuleLabel);
+                        if (!modules.length) return null;
+                        return (
+                          modules.slice(0, 2).join(' · ') +
+                          (modules.length > 2 ? ` +${modules.length - 2}` : '')
                         );
-                        return modules.length
-                          ? modules.slice(0, 3).join(', ') +
-                              (modules.length > 3 ? ` +${modules.length - 3}` : '')
-                          : 'No modules';
                       })();
                   return (
                     <li key={role.id}>
@@ -237,42 +244,40 @@ export default function SettingsPermissionsPage() {
                         type="button"
                         onClick={() => applyRoleSelection(role.id)}
                         className={cn(
-                          'flex w-full cursor-pointer items-start gap-3 px-3 py-3 text-left transition-colors',
-                          active ? 'bg-primary/10' : 'hover:bg-muted/40',
+                          'flex w-full cursor-pointer items-start gap-3 px-3.5 py-3.5 text-left transition-colors',
+                          active
+                            ? 'bg-amber-50 dark:bg-amber-950/40'
+                            : 'hover:bg-slate-50 dark:hover:bg-slate-900/40',
                         )}
                       >
                         <span
                           className={cn(
-                            'mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg',
+                            'mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg',
                             active
-                              ? 'bg-primary text-primary-foreground'
-                              : 'bg-muted text-muted-foreground',
+                              ? 'bg-amber-500 text-slate-950'
+                              : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200',
                           )}
                         >
                           <Shield className="h-4 w-4" />
                         </span>
                         <span className="min-w-0 flex-1">
                           <span className="flex items-center gap-2">
-                            <span className="truncate text-sm font-semibold">{role.name}</span>
-                            {full ? <Badge className="text-[10px]">Full</Badge> : null}
-                          </span>
-                          <span className="mt-1 block text-[11px] leading-relaxed text-muted-foreground">
+                            <span className="truncate text-base font-semibold text-slate-900 dark:text-slate-50">
+                              {role.name}
+                            </span>
                             {full ? (
-                              'All privileges assigned'
-                            ) : (
-                              <>
-                                <span className="font-medium text-emerald-700 dark:text-emerald-400">
-                                  {assigned} assigned
-                                </span>
-                                <span className="mx-1 text-border">·</span>
-                                <span className="font-medium text-muted-foreground">
-                                  {missing} not assigned
-                                </span>
-                              </>
-                            )}
+                              <Badge className="border-slate-300 bg-slate-900 text-xs text-white dark:bg-slate-100 dark:text-slate-900">
+                                Full
+                              </Badge>
+                            ) : null}
                           </span>
-                          {!full ? (
-                            <span className="mt-1 block truncate text-[10px] text-muted-foreground/90">
+                          <span className="mt-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                            {full
+                              ? 'All privileges'
+                              : `${assigned} of ${totalPermissions} privileges`}
+                          </span>
+                          {assignedModules ? (
+                            <span className="mt-1 block truncate text-sm font-medium text-slate-600 dark:text-slate-400">
                               {assignedModules}
                             </span>
                           ) : null}
@@ -307,11 +312,11 @@ export default function SettingsPermissionsPage() {
                   'Only checked privileges are assigned to this role.'
                 }
                 action={
-                  <Badge status={isFullAccess ? 'ACTIVE' : 'PENDING'}>
+                  <span className="inline-flex items-center rounded-lg border border-slate-300 bg-slate-100 px-2.5 py-1 text-sm font-semibold text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100">
                     {isFullAccess
-                      ? 'FULL ACCESS'
-                      : `${grantedCount} assigned / ${notAssignedCount} not`}
-                  </Badge>
+                      ? 'Full access'
+                      : `${grantedCount} / ${totalPermissions}`}
+                  </span>
                 }
               >
                 {isFullAccess ? (
@@ -386,10 +391,10 @@ export default function SettingsPermissionsPage() {
                           type="button"
                           onClick={() => setViewFilter(item.id)}
                           className={cn(
-                            'cursor-pointer rounded-full border px-3 py-1 text-xs font-medium transition-colors',
+                            'cursor-pointer rounded-lg border px-3.5 py-2 text-sm font-semibold transition-colors',
                             viewFilter === item.id
-                              ? 'border-foreground bg-foreground text-background'
-                              : 'border-border bg-background text-muted-foreground hover:text-foreground',
+                              ? 'border-slate-900 bg-slate-900 text-white dark:border-slate-100 dark:bg-slate-100 dark:text-slate-900'
+                              : 'border-slate-300 bg-white text-slate-800 hover:border-slate-400 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100',
                           )}
                         >
                           {item.label}
@@ -397,7 +402,7 @@ export default function SettingsPermissionsPage() {
                       ))}
                     </div>
 
-                    <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+                    <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm font-medium text-slate-800 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-200">
                       <span>
                         {grantedCount} assigned · {notAssignedCount} not assigned
                         {dirty ? ' · unsaved changes' : ''}
@@ -431,7 +436,7 @@ export default function SettingsPermissionsPage() {
 
               <SettingsCard
                 title="Privileges"
-                description="Only assigned privileges are listed by default. Switch to “Not assigned” or “All” to grant more."
+                description="Checked items are granted to this role. Use filters to find more."
               >
                 {matrixQuery.isLoading ? (
                   <div className="space-y-3">

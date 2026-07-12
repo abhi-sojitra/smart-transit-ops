@@ -2,7 +2,6 @@ import { z } from 'zod';
 import { FORM_LIMITS } from '@/constants/form';
 import { optionalString, trimValue } from '@/utils/form-sanitize';
 
-const PHONE_REGEX = /^[0-9]{10}$/;
 const NAME_REGEX = /^[a-zA-Z\s'-]+$/;
 const LETTERS_ONLY_REGEX = /^[a-zA-Z\s'-]+$/;
 const EMPLOYEE_CODE_REGEX = /^[A-Z0-9-_]+$/;

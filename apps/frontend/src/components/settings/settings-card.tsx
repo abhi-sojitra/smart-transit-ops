@@ -17,12 +17,16 @@ export function SettingsCard({
   action,
 }: SettingsCardProps) {
   return (
-    <Card className={cn(className)}>
+    <Card className={cn('border-slate-200 dark:border-slate-700', className)}>
       <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
         <div>
-          <CardTitle className="text-base">{title}</CardTitle>
+          <CardTitle className="text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-50">
+            {title}
+          </CardTitle>
           {description ? (
-            <CardDescription className="mt-1">{description}</CardDescription>
+            <CardDescription className="mt-1.5 text-sm font-medium leading-relaxed text-slate-700 dark:text-slate-300">
+              {description}
+            </CardDescription>
           ) : null}
         </div>
         {action}

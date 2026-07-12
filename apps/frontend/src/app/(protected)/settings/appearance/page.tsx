@@ -26,7 +26,7 @@ export default function AppearanceSettingsPage() {
   const query = useAppearanceSettings();
   const mutation = useUpdateAppearanceMutation();
   const [form, setForm] = useState({
-    theme: 'dark' as 'light' | 'dark' | 'system',
+    theme: 'dark' as 'light' | 'dark',
     sidebarCollapsed: false,
     compactTables: false,
   });
@@ -34,7 +34,7 @@ export default function AppearanceSettingsPage() {
   useEffect(() => {
     if (!query.data) return;
     setForm({
-      theme: query.data.theme,
+      theme: query.data.theme === 'light' ? 'light' : 'dark',
       sidebarCollapsed: query.data.sidebarCollapsed,
       compactTables: query.data.compactTables,
     });
@@ -69,7 +69,6 @@ export default function AppearanceSettingsPage() {
               <SelectContent>
                 <SelectItem value="light">Light</SelectItem>
                 <SelectItem value="dark">Dark</SelectItem>
-                <SelectItem value="system">System</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -94,7 +93,7 @@ export default function AppearanceSettingsPage() {
           <Button
             disabled={mutation.isPending}
             onClick={() => {
-              setTheme(form.theme === 'system' ? 'system' : form.theme);
+              setTheme(form.theme);
               setSidebarCollapsed(form.sidebarCollapsed);
               void mutation.mutateAsync(form);
             }}
