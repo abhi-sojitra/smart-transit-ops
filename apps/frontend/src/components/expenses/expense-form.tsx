@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { motion, useReducedMotion } from 'framer-motion';
 import { ExpenseStatus, ExpenseType } from '@transitops/shared-types';
 import { FormField } from '@/components/forms/form-field';
+import { FormShell } from '@/components/forms/form-shell';
 import { FormSection } from '@/components/forms/form-section';
 import { FormActionBar } from '@/components/forms/form-action-bar';
 import { Input } from '@/components/ui/input';
@@ -103,6 +104,7 @@ export function ExpenseForm({
           await onSubmit(clean(values));
         })}
       >
+        <FormShell submitting={submitting}>
         <FormSection title="Assignment">
           <FormField label="Vehicle" htmlFor="vehicleId" required error={errors.vehicleId?.message}>
             <VehicleSelect
@@ -268,6 +270,7 @@ export function ExpenseForm({
             />
           </FormField>
         </FormSection>
+        </FormShell>
       </motion.form>
 
       <FormActionBar

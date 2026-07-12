@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { motion, useReducedMotion } from 'framer-motion';
 import { FormField } from '@/components/forms/form-field';
+import { FormShell } from '@/components/forms/form-shell';
 import { FormSection } from '@/components/forms/form-section';
 import { FormActionBar } from '@/components/forms/form-action-bar';
 import { Input } from '@/components/ui/input';
@@ -207,6 +208,7 @@ export function DriverForm({
           await onSubmit(clean(values));
         })}
       >
+        <FormShell submitting={submitting}>
         <FormSection title="Personal Information">
           <FormField label="First Name" htmlFor="firstName" required error={errors.firstName?.message}>
             <Input
@@ -614,6 +616,7 @@ export function DriverForm({
             />
           </FormField>
         </FormSection>
+        </FormShell>
       </motion.form>
 
       <FormActionBar

@@ -6,6 +6,7 @@ import { Breadcrumb } from '@/components/layout/breadcrumb';
 import { SettingsCard } from '@/components/settings/settings-card';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { FormShell } from '@/components/forms/form-shell';
 import {
   useNotificationSettings,
   useUpdateNotificationsMutation,
@@ -92,6 +93,7 @@ export default function NotificationSettingsPage() {
       </SettingsCard>
 
       <SettingsCard title="Events">
+        <FormShell fetching={query.isLoading} submitting={mutation.isPending} skeletonFields={4}>
         <div className="grid gap-3 sm:grid-cols-2">
           {TOGGLES.map(([key, label]) => (
             <label key={key} className="flex items-center gap-2 text-sm">
@@ -105,11 +107,12 @@ export default function NotificationSettingsPage() {
         </div>
         <Button
           className="mt-4"
-          disabled={mutation.isPending}
+          loading={mutation.isPending}
           onClick={() => void mutation.mutateAsync(form)}
         >
-          {mutation.isPending ? 'Saving…' : 'Save notifications'}
+          Save notifications
         </Button>
+        </FormShell>
       </SettingsCard>
     </div>
   );

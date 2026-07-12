@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { Eye, Pencil, MoreHorizontal, CheckCircle2, XCircle, Trash2, PlayCircle } from 'lucide-react';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import type { ColumnDef } from '@tanstack/react-table';
 import {
   flexRender,
@@ -22,6 +23,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import type { PaginationMeta } from '@transitops/shared-types';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { sectionReveal, staggerContainer, tableRowReveal } from '@/components/drivers/motion';
 
 interface MaintenanceTableProps {
   data: Maintenance[];
@@ -61,6 +63,7 @@ export function MaintenanceTable({
   onCancel,
   onDelete,
 }: MaintenanceTableProps) {
+  const reduceMotion = useReducedMotion();
   const columns: ColumnDef<Maintenance>[] = [
     {
       accessorKey: 'maintenanceNumber',
@@ -204,7 +207,12 @@ export function MaintenanceTable({
   const rows = table.getRowModel().rows;
 
   return (
-    <div className="space-y-4">
+    <motion.div
+      className="space-y-4"
+      variants={sectionReveal}
+      initial={reduceMotion ? false : 'hidden'}
+      animate="show"
+    >
       <div className="overflow-hidden rounded-xl border border-border">
         <div className="w-full overflow-x-auto">
           <table className="w-full min-w-[960px] text-sm">
@@ -222,32 +230,41 @@ export function MaintenanceTable({
                 </tr>
               ))}
             </thead>
-            <tbody>
-              {rows.length ? (
-                rows.map((row) => (
-                  <tr key={row.id} className="border-b border-border last:border-0 hover:bg-muted/30">
-                    {row.getVisibleCells().map((cell) => (
-                      <td key={cell.id} className="px-4 py-3 align-middle">
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </td>
-                    ))}
+            <motion.tbody variants={staggerContainer} initial={false} animate="show">
+              <AnimatePresence initial={false}>
+                {rows.length ? (
+                  rows.map((row) => (
+                    <motion.tr
+                      key={row.id}
+                      variants={tableRowReveal}
+                      initial={reduceMotion ? false : 'hidden'}
+                      animate="show"
+                      exit="exit"
+                      className="border-b border-border last:border-0 hover:bg-muted/30"
+                    >
+                      {row.getVisibleCells().map((cell) => (
+                        <td key={cell.id} className="px-4 py-3 align-middle">
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </td>
+                      ))}
+                    </motion.tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={columns.length} className="p-0">
+                      <EmptyState
+                        title="No maintenance records"
+                        description="Create a work order to get started."
+                        actionLabel="New Maintenance"
+                        onAction={() => {
+                          window.location.href = '/maintenance/new';
+                        }}
+                      />
+                    </td>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={columns.length} className="p-0">
-                    <EmptyState
-                      title="No maintenance records"
-                      description="Create a work order to get started."
-                      actionLabel="New Maintenance"
-                      onAction={() => {
-                        window.location.href = '/maintenance/new';
-                      }}
-                    />
-                  </td>
-                </tr>
-              )}
-            </tbody>
+                )}
+              </AnimatePresence>
+            </motion.tbody>
           </table>
         </div>
       </div>
@@ -276,6 +293,6 @@ export function MaintenanceTable({
           </div>
         </div>
       ) : null}
-    </div>
+    </motion.div>
   );
 }

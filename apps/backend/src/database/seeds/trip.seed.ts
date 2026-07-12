@@ -45,6 +45,17 @@ export async function seedTripDispatcherData(mongoose: typeof import('mongoose')
   console.log('Preparing trip dispatcher seed (using existing fleet vehicles)...');
   await TripModel.deleteMany({});
 
+  // Legacy schema used unique tripId; current schema uses tripNumber.
+  try {
+    await TripModel.collection.dropIndex('tripId_1');
+    console.log('  ✓ dropped obsolete trips.tripId_1 index');
+  } catch (err) {
+    const code = (err as { code?: number | string }).code;
+    if (code !== 27 && code !== 'IndexNotFound') {
+      throw err;
+    }
+  }
+
   const vehicles = await VehicleModel.find({ isDeleted: { $ne: true } }).exec();
   if (!vehicles.length) {
     throw new Error('No vehicles found. Seed fleet vehicles before trip data.');

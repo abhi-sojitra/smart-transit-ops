@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { EmptyState } from '@/components/feedback/empty-state';
+import { FormShell } from '@/components/forms/form-shell';
 import { useCompanySettings, useUpdateCompanyMutation } from '@/hooks/use-admin';
 
 export default function CompanySettingsPage() {
@@ -66,6 +67,7 @@ export default function CompanySettingsPage() {
       </div>
 
       <SettingsCard title="Organization" description="Shown across invoices and reports">
+        <FormShell fetching={query.isLoading} submitting={mutation.isPending} skeletonFields={10}>
         <form
           className="grid max-w-2xl gap-4 md:grid-cols-2"
           onSubmit={(e) => {
@@ -97,11 +99,12 @@ export default function CompanySettingsPage() {
             </div>
           ))}
           <div className="md:col-span-2">
-            <Button type="submit" disabled={mutation.isPending || query.isLoading}>
-              {mutation.isPending ? 'Saving…' : 'Save changes'}
+            <Button type="submit" loading={mutation.isPending}>
+              Save changes
             </Button>
           </div>
         </form>
+        </FormShell>
       </SettingsCard>
     </div>
   );

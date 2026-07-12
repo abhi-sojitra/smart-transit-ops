@@ -102,7 +102,7 @@ export default function SettingsRolesPage() {
                     <div className="flex flex-wrap gap-2">
                       <Button
                         size="sm"
-                        disabled={updateMutation.isPending}
+                        loading={updateMutation.isPending}
                         onClick={() =>
                           void updateMutation.mutateAsync({
                             id: role.id,
@@ -149,7 +149,7 @@ export default function SettingsRolesPage() {
                     <Button
                       size="sm"
                       variant="outline"
-                      disabled={cloneMutation.isPending}
+                      loading={cloneMutation.isPending}
                       onClick={() =>
                         void cloneMutation.mutateAsync({
                           id: role.id,

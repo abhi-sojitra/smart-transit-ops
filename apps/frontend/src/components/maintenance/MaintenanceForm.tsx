@@ -11,6 +11,7 @@ import {
   MaintenanceType,
 } from '@transitops/shared-types';
 import { FormField } from '@/components/forms/form-field';
+import { FormShell } from '@/components/forms/form-shell';
 import { Input } from '@/components/ui/input';
 import { InputAffix } from '@/components/ui/input-affix';
 import { DatePicker } from '@/components/ui/date-picker';
@@ -207,6 +208,7 @@ export function MaintenanceForm({
 
   return (
     <form className="space-y-4" onSubmit={handleSubmit(onSubmit)} noValidate>
+      <FormShell submitting={loading}>
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Vehicle</CardTitle>
@@ -518,6 +520,7 @@ export function MaintenanceForm({
           {mode === 'create' ? 'Create maintenance' : 'Save changes'}
         </Button>
       </div>
+      </FormShell>
     </form>
   );
 }

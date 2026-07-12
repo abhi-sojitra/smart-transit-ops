@@ -96,7 +96,7 @@ export function VehicleStatisticsCards({ statistics, loading }: VehicleStatistic
 
   return (
     <motion.div
-      className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4"
+      className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
       variants={staggerContainer}
       initial={reduceMotion ? false : 'hidden'}
       animate="show"
@@ -110,7 +110,6 @@ export function VehicleStatisticsCards({ statistics, loading }: VehicleStatistic
             loading={loading}
             tone={card.tone}
             hint={card.hint}
-            size="compact"
             className="h-full"
           />
         </motion.div>

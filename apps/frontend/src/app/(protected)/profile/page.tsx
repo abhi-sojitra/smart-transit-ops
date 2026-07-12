@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { EmptyState } from '@/components/feedback/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
+import { FormShell } from '@/components/forms/form-shell';
 import {
   useChangePasswordMutation,
   useProfile,
@@ -87,6 +88,7 @@ export default function ProfilePage() {
               {profile.lastLoginAt ? formatDateTime(profile.lastLoginAt) : '—'}
             </p>
           </div>
+          <FormShell submitting={updateMutation.isPending}>
           <form
             className="grid gap-3"
             onSubmit={(e) => {
@@ -124,13 +126,15 @@ export default function ProfilePage() {
                 onChange={(e) => setForm((f) => ({ ...f, avatarUrl: e.target.value }))}
               />
             </div>
-            <Button type="submit" disabled={updateMutation.isPending}>
-              {updateMutation.isPending ? 'Saving…' : 'Save profile'}
+            <Button type="submit" loading={updateMutation.isPending}>
+              Save profile
             </Button>
           </form>
+          </FormShell>
         </SettingsCard>
 
         <SettingsCard title="Change password" description="You will need to sign in again after changing password.">
+          <FormShell submitting={passwordMutation.isPending}>
           <form
             className="grid gap-3"
             onSubmit={(e) => {
@@ -163,10 +167,11 @@ export default function ProfilePage() {
                 minLength={8}
               />
             </div>
-            <Button type="submit" disabled={passwordMutation.isPending}>
-              {passwordMutation.isPending ? 'Updating…' : 'Update password'}
+            <Button type="submit" loading={passwordMutation.isPending}>
+              Update password
             </Button>
           </form>
+          </FormShell>
         </SettingsCard>
       </div>
     </div>

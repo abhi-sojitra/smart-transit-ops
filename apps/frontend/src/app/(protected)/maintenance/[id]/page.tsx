@@ -3,7 +3,18 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { CheckCircle2, Pencil, PlayCircle, XCircle } from 'lucide-react';
+import {
+  Calendar,
+  CheckCircle2,
+  DollarSign,
+  Pencil,
+  PlayCircle,
+  Truck,
+  Wrench,
+  XCircle,
+  type LucideIcon,
+} from 'lucide-react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { toast } from 'sonner';
 import { MaintenanceStatus } from '@transitops/shared-types';
 import { PageHeader } from '@/components/layout/page-header';
@@ -25,6 +36,7 @@ import {
   useStartMaintenance,
   useUploadMaintenanceAttachments,
 } from '@/hooks/use-maintenance';
+import { pageFade } from '@/components/drivers/motion';
 
 function money(value?: number) {
   if (value == null) return '—';
@@ -37,6 +49,7 @@ function formatDate(value?: string) {
 }
 
 export default function MaintenanceDetailPage() {
+  const reduceMotion = useReducedMotion();
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const id = params.id;
@@ -66,7 +79,12 @@ export default function MaintenanceDetailPage() {
     item.status === MaintenanceStatus.SCHEDULED || item.status === MaintenanceStatus.IN_PROGRESS;
 
   return (
-    <div className="space-y-6">
+    <motion.div
+      className="space-y-6"
+      variants={pageFade}
+      initial={reduceMotion ? false : 'hidden'}
+      animate="show"
+    >
       <div>
         <Breadcrumb
           items={[
@@ -111,6 +129,21 @@ export default function MaintenanceDetailPage() {
         />
       </div>
 
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <SummaryChip
+          icon={Truck}
+          label="Vehicle"
+          value={`${item.vehicleNumber ?? '—'}${item.vehicleModel ? ` · ${item.vehicleModel}` : ''}`}
+        />
+        <SummaryChip
+          icon={Wrench}
+          label="Type"
+          value={item.maintenanceType?.replaceAll('_', ' ') ?? '—'}
+        />
+        <SummaryChip icon={Calendar} label="Expected" value={formatDate(item.expectedCompletionDate)} />
+        <SummaryChip icon={DollarSign} label="Est. Cost" value={money(item.estimatedCost)} />
+      </div>
+
       <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
         <div className="space-y-4">
           <Card>
@@ -118,18 +151,18 @@ export default function MaintenanceDetailPage() {
               <CardTitle className="text-base">Details</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-3 sm:grid-cols-2 text-sm">
-              <Detail label="Vehicle" value={`${item.vehicleNumber ?? '—'} · ${item.vehicleModel ?? ''}`} />
-              <Detail label="Type" value={item.maintenanceType?.replaceAll('_', ' ') ?? '—'} />
+              <Detail icon={Truck} label="Vehicle" value={`${item.vehicleNumber ?? '—'} · ${item.vehicleModel ?? ''}`} />
+              <Detail icon={Wrench} label="Type" value={item.maintenanceType?.replaceAll('_', ' ') ?? '—'} />
               <Detail label="Priority" value={item.priority} />
               <Detail label="Vendor" value={item.vendorName ?? '—'} />
               <Detail label="Service center" value={item.serviceCenter ?? '—'} />
               <Detail label="Odometer" value={item.odometerReading?.toLocaleString() ?? '—'} />
-              <Detail label="Start" value={formatDate(item.startDate)} />
-              <Detail label="Expected" value={formatDate(item.expectedCompletionDate)} />
-              <Detail label="Completed" value={formatDate(item.completedDate)} />
-              <Detail label="Next service" value={formatDate(item.nextServiceDue)} />
-              <Detail label="Estimated cost" value={money(item.estimatedCost)} />
-              <Detail label="Actual cost" value={money(item.actualCost)} />
+              <Detail icon={Calendar} label="Start" value={formatDate(item.startDate)} />
+              <Detail icon={Calendar} label="Expected" value={formatDate(item.expectedCompletionDate)} />
+              <Detail icon={Calendar} label="Completed" value={formatDate(item.completedDate)} />
+              <Detail icon={Calendar} label="Next service" value={formatDate(item.nextServiceDue)} />
+              <Detail icon={DollarSign} label="Estimated cost" value={money(item.estimatedCost)} />
+              <Detail icon={DollarSign} label="Actual cost" value={money(item.actualCost)} />
               <div className="sm:col-span-2">
                 <p className="text-muted-foreground">Description</p>
                 <p className="mt-1">{item.description || '—'}</p>
@@ -265,14 +298,49 @@ export default function MaintenanceDetailPage() {
           );
         }}
       />
-    </div>
+    </motion.div>
   );
 }
 
-function Detail({ label, value }: { label: string; value: string }) {
+function SummaryChip({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: LucideIcon;
+  label: string;
+  value: string;
+}) {
+  return (
+    <Card className="border-border/80">
+      <CardContent className="flex items-start gap-3 p-4">
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/15 text-primary">
+          <Icon className="h-4 w-4" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
+          <p className="mt-0.5 truncate text-sm font-semibold">{value}</p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function Detail({
+  label,
+  value,
+  icon: Icon,
+}: {
+  label: string;
+  value: string;
+  icon?: LucideIcon;
+}) {
   return (
     <div>
-      <p className="text-muted-foreground">{label}</p>
+      <p className="inline-flex items-center gap-1.5 text-muted-foreground">
+        {Icon ? <Icon className="h-3.5 w-3.5" /> : null}
+        {label}
+      </p>
       <p className="mt-1 font-medium">{value}</p>
     </div>
   );

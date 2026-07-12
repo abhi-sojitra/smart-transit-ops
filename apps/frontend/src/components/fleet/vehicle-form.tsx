@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { motion } from 'framer-motion';
 import { useSafeReducedMotion } from '@/hooks/use-safe-reduced-motion';
 import { FormField } from '@/components/forms/form-field';
+import { FormShell } from '@/components/forms/form-shell';
 import { FormSection } from '@/components/forms/form-section';
 import { FormActionBar } from '@/components/forms/form-action-bar';
 import { Input } from '@/components/ui/input';
@@ -238,6 +239,7 @@ export function VehicleForm({
           }
         })}
       >
+        <FormShell submitting={submitting}>
         <FormSection title="Vehicle Identity">
           <FormField label="Vehicle ID" htmlFor="vehicleId" required error={errors.vehicleId?.message}>
             <Input
@@ -562,6 +564,7 @@ export function VehicleForm({
             />
           </FormField>
         </FormSection>
+        </FormShell>
       </motion.form>
 
       <FormActionBar

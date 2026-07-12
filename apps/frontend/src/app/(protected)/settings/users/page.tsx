@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/select';
 import { EmptyState } from '@/components/feedback/empty-state';
 import { ConfirmationDialog } from '@/components/feedback/confirmation-dialog';
+import { FormShell } from '@/components/forms/form-shell';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   useAdminRoles,
@@ -383,6 +384,7 @@ function CreateUserDialog({
             });
           }}
         >
+          <FormShell submitting={loading}>
           <div className="space-y-1.5">
             <Label>First name</Label>
             <Input
@@ -445,10 +447,11 @@ function CreateUserDialog({
             />
           </div>
           <div className="sm:col-span-2">
-            <Button type="submit" disabled={loading} className="w-full">
-              {loading ? 'Creating…' : 'Create user'}
+            <Button type="submit" loading={loading} className="w-full">
+              Create user
             </Button>
           </div>
+          </FormShell>
         </form>
       </DialogContent>
     </Dialog>
@@ -519,6 +522,7 @@ function EditUserDialog({
             });
           }}
         >
+          <FormShell submitting={loading}>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label>First name</Label>
@@ -581,9 +585,10 @@ function EditUserDialog({
               <p className="text-xs text-destructive">Select at least one role.</p>
             ) : null}
           </div>
-          <Button type="submit" disabled={loading || !form.selectedRoles.length}>
-            {loading ? 'Saving…' : 'Save changes'}
+          <Button type="submit" loading={loading} disabled={!form.selectedRoles.length}>
+            Save changes
           </Button>
+          </FormShell>
         </form>
       </DialogContent>
     </Dialog>

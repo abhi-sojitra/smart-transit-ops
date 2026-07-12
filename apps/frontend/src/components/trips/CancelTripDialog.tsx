@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { FormField } from '@/components/forms/form-field';
+import { FormShell } from '@/components/forms/form-shell';
 import { CharacterCountTextarea } from '@/components/ui/character-count-textarea';
 import { DEFAULT_FORM_OPTIONS, FORM_LIMITS, PLACEHOLDERS } from '@/constants/form';
 import { sanitizeTextInput } from '@/utils/form-sanitize';
@@ -61,6 +62,7 @@ export function CancelTripDialog({
           </DialogDescription>
         </DialogHeader>
         <form className="space-y-4" onSubmit={handleSubmit(onConfirm)} noValidate>
+          <FormShell submitting={loading}>
           <FormField label="Reason" htmlFor="cancelReason" required error={errors.reason?.message}>
             <CharacterCountTextarea
               id="cancelReason"
@@ -89,6 +91,7 @@ export function CancelTripDialog({
               Cancel trip
             </Button>
           </div>
+          </FormShell>
         </form>
       </DialogContent>
     </Dialog>
