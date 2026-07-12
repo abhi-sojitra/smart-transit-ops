@@ -9,19 +9,11 @@ import { DriverStatusBadge } from '@/components/drivers/driver-status-badge';
 import { staggerItem } from '@/components/drivers/motion';
 import { cn } from '@/utils/cn';
 import type { Driver } from '@/types/driver';
+import { getDriverDisplayName, getInitials } from '@/components/drivers/driver-display';
 
 interface DriverCardProps {
   driver: Driver;
   onDelete?: (driver: Driver) => void;
-}
-
-function getInitials(name: string) {
-  return name
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? '')
-    .join('');
 }
 
 function formatDate(value?: string) {
@@ -56,11 +48,13 @@ export function DriverCard({ driver, onDelete }: DriverCardProps) {
         <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0 pb-3">
           <div className="flex min-w-0 items-center gap-3">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-semibold text-primary ring-1 ring-primary/20">
-              {getInitials(driver.fullName)}
+              {getInitials(getDriverDisplayName(driver))}
             </div>
             <div className="min-w-0">
-              <CardTitle className="truncate text-base">{driver.fullName}</CardTitle>
-              <p className="mt-0.5 font-mono text-xs text-muted-foreground">{driver.employeeCode}</p>
+              <CardTitle className="truncate text-base">{getDriverDisplayName(driver)}</CardTitle>
+              <p className="mt-0.5 font-mono text-xs text-muted-foreground">
+                {driver.employeeCode || '—'}
+              </p>
             </div>
           </div>
           <DriverStatusBadge status={driver.status} />
@@ -69,7 +63,7 @@ export function DriverCard({ driver, onDelete }: DriverCardProps) {
         <CardContent className="space-y-3">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Phone className="h-3.5 w-3.5 shrink-0" />
-            <span className="tabular-nums">{driver.phone}</span>
+            <span className="tabular-nums">{driver.phone || '—'}</span>
           </div>
 
           <div className="flex items-start gap-2 text-sm text-muted-foreground">

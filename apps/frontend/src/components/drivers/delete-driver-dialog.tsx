@@ -1,6 +1,7 @@
 'use client';
 
 import { ConfirmationDialog } from '@/components/feedback/confirmation-dialog';
+import { getDriverDisplayName } from '@/components/drivers/driver-display';
 import type { Driver } from '@/types/driver';
 
 interface DeleteDriverDialogProps {
@@ -25,7 +26,7 @@ export function DeleteDriverDialog({
       title="Delete driver?"
       description={
         driver
-          ? `Soft-delete ${driver.fullName} (${driver.employeeCode}). They will no longer appear in driver lists.`
+          ? `Soft-delete ${getDriverDisplayName(driver)} (${driver.employeeCode || '—'}). They will no longer appear in driver lists.`
           : 'This driver will be soft-deleted.'
       }
       confirmLabel="Delete"

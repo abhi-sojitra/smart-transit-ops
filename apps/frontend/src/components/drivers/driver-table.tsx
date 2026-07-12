@@ -22,6 +22,7 @@ import { DriverStatusBadge } from '@/components/drivers/driver-status-badge';
 import { sectionReveal, staggerContainer, tableRowReveal } from '@/components/drivers/motion';
 import { cn } from '@/utils/cn';
 import type { Driver, DriverFiltersState, PaginationMeta } from '@/types/driver';
+import { getDriverDisplayName, getInitials } from '@/components/drivers/driver-display';
 
 type SortField = DriverFiltersState['sortBy'];
 
@@ -84,14 +85,6 @@ function formatDate(value?: string) {
   });
 }
 
-function getInitials(name: string) {
-  return name
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? '')
-    .join('');
-}
 
 function daysUntil(dateValue?: string) {
   if (!dateValue) return null;
@@ -260,14 +253,14 @@ export function DriverTable({
                     <td className="px-4 py-3.5">
                       <div className="flex items-center gap-3">
                         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-semibold text-primary ring-1 ring-primary/20">
-                          {getInitials(driver.fullName)}
+                          {getInitials(getDriverDisplayName(driver))}
                         </div>
                         <div className="min-w-0">
                           <p className="truncate font-medium text-foreground group-hover:text-primary">
-                            {driver.fullName}
+                            {getDriverDisplayName(driver)}
                           </p>
                           <p className="mt-0.5 font-mono text-xs text-muted-foreground">
-                            {driver.employeeCode}
+                            {driver.employeeCode || '—'}
                           </p>
                         </div>
                       </div>
@@ -277,19 +270,21 @@ export function DriverTable({
                       <div className="space-y-1">
                         <p className="inline-flex items-center gap-1.5 text-sm">
                           <Phone className="h-3.5 w-3.5 text-muted-foreground" />
-                          <span className="tabular-nums">{driver.phone}</span>
+                          <span className="tabular-nums">{driver.phone || '—'}</span>
                         </p>
                         <p className="max-w-[180px] truncate text-xs text-muted-foreground">
-                          {driver.email}
+                          {driver.email || '—'}
                         </p>
                       </div>
                     </td>
 
                     <td className="px-4 py-3.5">
                       <div className="space-y-1">
-                        <p className="font-mono text-sm">{driver.licenseNumber}</p>
+                        <p className="font-mono text-sm">{driver.licenseNumber || '—'}</p>
                         <p className="text-xs text-muted-foreground">
-                          {String(driver.licenseCategory).replaceAll('_', ' ')}
+                          {driver.licenseCategory
+                            ? String(driver.licenseCategory).replaceAll('_', ' ')
+                            : '—'}
                           {driver.experienceYears != null
                             ? ` · ${driver.experienceYears} yrs`
                             : null}

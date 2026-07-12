@@ -39,7 +39,7 @@ export class Trip {
   @Prop({ required: true, min: 0 })
   cargoWeight!: number;
 
-  @Prop({ enum: CargoType, default: CargoType.GENERAL })
+  @Prop({ type: String, enum: CargoType, default: CargoType.GENERAL })
   cargoType!: CargoType;
 
   @Prop({ required: true, min: 0 })
@@ -72,7 +72,7 @@ export class Trip {
   @Prop()
   notes?: string;
 
-  @Prop({ enum: TripStatus, default: TripStatus.DRAFT, index: true })
+  @Prop({ type: String, enum: TripStatus, default: TripStatus.DRAFT, index: true })
   status!: TripStatus;
 
   @Prop({ type: [TripDocumentMeta], default: [] })
