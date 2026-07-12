@@ -1,49 +1,75 @@
 'use client';
 
-import type { ColumnDef } from '@tanstack/react-table';
-import { DollarSign, Fuel, Wallet } from 'lucide-react';
-import type { FuelExpense } from '@transitops/shared-types';
+import Link from 'next/link';
+import { Fuel, Receipt, ArrowRight } from 'lucide-react';
 import { PageHeader } from '@/components/layout/page-header';
 import { Breadcrumb } from '@/components/layout/breadcrumb';
-import { StatCard } from '@/components/charts/stat-card';
-import { Badge } from '@/components/ui/badge';
-import { DataTable } from '@/components/data-table/data-table';
-import { mockExpenses } from '@/constants/mock-data';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { FuelStatisticsCards, ExpenseStatisticsCards } from '@/components/charts/CostCards';
+import { FuelCharts, ExpenseCharts } from '@/components/charts/FuelExpenseCharts';
+import { useFuelStatistics, useVehicleFuelComparison } from '@/hooks/use-fuel';
+import { useExpenseStatistics } from '@/hooks/use-expenses';
 
-const columns: ColumnDef<FuelExpense>[] = [
-  { accessorKey: 'date', header: 'Date' },
-  { accessorKey: 'vehicleId', header: 'Vehicle' },
-  { accessorKey: 'type', header: 'Type' },
-  {
-    accessorKey: 'amount',
-    header: 'Amount',
-    cell: ({ row }) => `$${row.original.amount.toFixed(2)}`,
-  },
-  {
-    accessorKey: 'status',
-    header: 'Status',
-    cell: ({ row }) => <Badge status={row.original.status}>{row.original.status}</Badge>,
-  },
-];
+export default function FuelExpensesOverviewPage() {
+  const { data: fuelStats, isLoading: fuelLoading } = useFuelStatistics();
+  const { data: expenseStats, isLoading: expenseLoading } = useExpenseStatistics();
+  const { data: comparison, isLoading: comparisonLoading } = useVehicleFuelComparison();
 
-export default function FuelExpensesPage() {
   return (
     <div className="space-y-6">
       <div>
         <Breadcrumb items={[{ label: 'Home', href: '/dashboard' }, { label: 'Fuel & Expense' }]} />
         <PageHeader
           title="Fuel & Expense Management"
-          description="Track fuel logs and operating expenses across the fleet."
+          description="Operational cost overview across fuel logs and fleet expenses."
         />
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard title="Total Fuel Cost" value="$12,480" icon={Fuel} growth={3} />
-        <StatCard title="Avg Fuel Price" value="$1.74/L" icon={DollarSign} growth={-1} />
-        <StatCard title="Total Expenses" value="$18,920" icon={Wallet} growth={5} />
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card className="min-w-0">
+          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Fuel className="h-4 w-4 shrink-0 text-primary" />
+              Fuel Management
+            </CardTitle>
+            <Button variant="outline" size="sm" className="shrink-0" asChild>
+              <Link href="/fuel">
+                View all
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <FuelStatisticsCards stats={fuelStats} loading={fuelLoading} layout="panel" />
+          </CardContent>
+        </Card>
+
+        <Card className="min-w-0">
+          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Receipt className="h-4 w-4 shrink-0 text-primary" />
+              Expense Management
+            </CardTitle>
+            <Button variant="outline" size="sm" className="shrink-0" asChild>
+              <Link href="/expenses">
+                View all
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <ExpenseStatisticsCards stats={expenseStats} loading={expenseLoading} layout="panel" />
+          </CardContent>
+        </Card>
       </div>
 
-      <DataTable columns={columns} data={mockExpenses} searchPlaceholder="Search expenses..." />
+      <FuelCharts
+        stats={fuelStats}
+        vehicleComparison={comparison}
+        loading={fuelLoading || comparisonLoading}
+      />
+      <ExpenseCharts stats={expenseStats} loading={expenseLoading} />
     </div>
   );
 }

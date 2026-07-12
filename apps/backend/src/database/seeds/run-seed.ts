@@ -8,6 +8,7 @@ import { UserSchema } from '../../schemas/user.schema';
 import { DriverSchema } from '../../modules/driver/schema/driver.schema';
 import { buildDemoDrivers } from '../../modules/driver/seeds/driver.seed';
 import { DEFAULT_ROLES } from './roles.seed';
+import { TEST_USERS } from './test-users.seed';
 
 loadEnv({ path: resolve(__dirname, '../../../.env') });
 
@@ -54,6 +55,27 @@ async function runSeed() {
     },
     { upsert: true, new: true },
   );
+  console.log(`  ✓ ${email} (SUPER_ADMIN)`);
+
+  console.log('Seeding test users for fuel & expense module...');
+  for (const user of TEST_USERS) {
+    const testPasswordHash = await bcrypt.hash(user.password, 12);
+    await UserModel.findOneAndUpdate(
+      { email: user.email.toLowerCase() },
+      {
+        $set: {
+          email: user.email.toLowerCase(),
+          passwordHash: testPasswordHash,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          roles: [roleIds[RoleCode[user.role]]],
+          status: UserAccountStatus.ACTIVE,
+        },
+      },
+      { upsert: true, new: true },
+    );
+    console.log(`  ✓ ${user.email} (${user.role})`);
+  }
 
   console.log('Seeding 20 demo drivers...');
   const demoDrivers = buildDemoDrivers(20);

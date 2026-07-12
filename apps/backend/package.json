@@ -12,6 +12,8 @@
     "lint": "eslint \"{src,test}/**/*.ts\" --fix",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "seed": "ts-node -r tsconfig-paths/register src/database/seeds/run-seed.ts",
+    "seed:fuel-expense": "ts-node -r tsconfig-paths/register src/database/seeds/fuel-expense.seed.ts",
+    "seed:all": "yarn seed && yarn seed:fuel-expense",
     "test": "jest --config jest.config.ts",
     "test:watch": "jest --config jest.config.ts --watch",
     "test:cov": "jest --config jest.config.ts --coverage"

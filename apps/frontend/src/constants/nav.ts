@@ -18,6 +18,8 @@ export const NAV_ITEMS = [
   { title: 'Trips & Dispatch', href: '/trips', icon: Route },
   { title: 'Maintenance', href: '/maintenance', icon: Wrench },
   { title: 'Fuel & Expense', href: '/fuel-expenses', icon: Fuel },
+  { title: 'Fuel Logs', href: '/fuel', icon: Fuel },
+  { title: 'Expenses', href: '/expenses', icon: Fuel },
   { title: 'Analytics', href: '/analytics', icon: BarChart3 },
   { title: 'Settings', href: '/settings', icon: Settings },
 ] as const;
