@@ -51,6 +51,7 @@ interface StatCardProps {
   icon: LucideIcon;
   growth?: number;
   loading?: boolean;
+  size?: 'default' | 'compact';
   className?: string;
   tone?: StatCardTone;
   hint?: string;
@@ -62,19 +63,22 @@ export function StatCard({
   icon: Icon,
   growth,
   loading,
+  size = 'default',
   className,
   tone = 'neutral',
   hint,
 }: StatCardProps) {
   const styles = toneStyles[tone];
+  const compact = size === 'compact';
+  const valueText = String(value);
 
   if (loading) {
     return (
-      <Card className={cn('overflow-hidden bg-card', className)}>
-        <CardContent className="space-y-3 p-5">
-          <Skeleton className="h-10 w-10 rounded-xl" />
-          <Skeleton className="h-4 w-28" />
-          <Skeleton className="h-8 w-16" />
+      <Card className={cn('min-w-0 overflow-hidden bg-card', className)}>
+        <CardContent className={cn(compact ? 'space-y-2 p-3' : 'space-y-3 p-5')}>
+          <Skeleton className={cn('rounded-xl', compact ? 'h-8 w-8' : 'h-10 w-10')} />
+          <Skeleton className={cn(compact ? 'h-3 w-20' : 'h-4 w-28')} />
+          <Skeleton className={cn(compact ? 'h-6 w-14' : 'h-8 w-16')} />
         </CardContent>
       </Card>
     );
@@ -84,27 +88,35 @@ export function StatCard({
 
   return (
     <motion.div
+      className="min-w-0"
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25 }}
-      whileHover={{ y: -2 }}
+      whileHover={compact ? undefined : { y: -2 }}
     >
       <Card
         className={cn(
-          'overflow-hidden border border-border bg-card shadow-sm transition-shadow hover:shadow-md',
+          'min-w-0 overflow-hidden border border-border bg-card shadow-sm transition-shadow',
+          !compact && 'hover:shadow-md',
           className,
         )}
       >
-        <div className={cn('h-1.5 w-full', styles.bar)} />
-        <CardContent className="p-5">
-          <div className="mb-4 flex items-center justify-between gap-3">
+        {!compact ? <div className={cn('h-1.5 w-full', styles.bar)} /> : null}
+        <CardContent className={cn(compact ? 'p-3' : 'p-5')}>
+          <div
+            className={cn(
+              'flex items-center justify-between gap-3',
+              compact ? 'mb-2' : 'mb-4',
+            )}
+          >
             <div
               className={cn(
-                'flex h-10 w-10 items-center justify-center rounded-xl shadow-sm',
+                'flex shrink-0 items-center justify-center rounded-xl shadow-sm',
+                compact ? 'h-8 w-8' : 'h-10 w-10',
                 styles.icon,
               )}
             >
-              <Icon className="h-5 w-5" strokeWidth={2.25} />
+              <Icon className={cn(compact ? 'h-4 w-4' : 'h-5 w-5')} strokeWidth={2.25} />
             </div>
             {hint ? (
               <span
@@ -118,15 +130,29 @@ export function StatCard({
             ) : null}
           </div>
 
-          <p className="text-sm font-semibold text-foreground">{title}</p>
-          <div className="mt-1 flex items-end justify-between gap-2">
-            <p className="text-3xl font-bold tracking-tight text-foreground tabular-nums">
+          <p
+            className={cn(
+              'font-semibold text-foreground',
+              compact ? 'text-xs text-muted-foreground' : 'text-sm',
+            )}
+          >
+            {title}
+          </p>
+          <div className="mt-1 flex min-w-0 items-end justify-between gap-2">
+            <p
+              className={cn(
+                'min-w-0 truncate font-bold tracking-tight text-foreground tabular-nums',
+                compact ? 'text-lg' : 'text-3xl',
+              )}
+              title={valueText}
+            >
               {value}
             </p>
             {growth !== undefined ? (
               <span
                 className={cn(
-                  'mb-1 inline-flex items-center gap-1 text-xs font-semibold',
+                  'inline-flex shrink-0 items-center gap-1 text-xs font-semibold',
+                  compact ? 'font-medium' : 'mb-1',
                   positive
                     ? 'text-emerald-600 dark:text-emerald-400'
                     : 'text-red-600 dark:text-red-400',

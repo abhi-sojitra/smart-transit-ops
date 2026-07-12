@@ -6,6 +6,8 @@ import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { RolesModule } from './modules/roles/roles.module';
 import { DriverModule } from './modules/driver/driver.module';
+import { FuelModule } from './modules/fuel/fuel.module';
+import { ExpenseModule } from './modules/expense/expense.module';
 import { envValidationSchema } from './config/env.validation';
 import { HealthController } from './health.controller';
 
@@ -21,6 +23,8 @@ import { HealthController } from './health.controller';
     UsersModule,
     RolesModule,
     DriverModule,
+    FuelModule,
+    ExpenseModule,
   ],
   controllers: [HealthController],
 })

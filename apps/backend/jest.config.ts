@@ -11,9 +11,16 @@ const config: Config = {
     'src/modules/driver/service/**/*.(t|j)s',
     'src/modules/driver/repository/**/*.(t|j)s',
     'src/modules/driver/controller/**/*.(t|j)s',
+    'src/modules/fuel/**/*.(t|j)s',
+    'src/modules/expense/**/*.(t|j)s',
+    'src/repositories/fuel.repository.ts',
+    'src/repositories/expense.repository.ts',
     '!src/modules/driver/**/*.spec.ts',
+    '!**/*.module.ts',
+    '!**/dto/**',
+    '!**/*.mapper.ts',
   ],
-  coverageDirectory: './coverage/driver',
+  coverageDirectory: './coverage',
   coverageThreshold: {
     global: {
       branches: 70,

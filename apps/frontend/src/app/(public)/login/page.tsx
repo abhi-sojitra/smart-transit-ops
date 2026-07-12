@@ -139,8 +139,14 @@ export default function LoginPage() {
                 {formError}
               </div>
             ) : (
-              <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-300">
-                Demo: admin@transitops.com / Admin@12345
+              <div className="space-y-2">
+                <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-300">
+                  Admin: admin@transitops.com / Admin@12345
+                </div>
+                <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+                  Test accounts: fleet@transitops.com / Fleet@12345 · finance@transitops.com /
+                  Finance@12345 · driver@transitops.com / Driver@12345
+                </div>
               </div>
             )}
 

@@ -45,6 +45,30 @@ yarn dev:backend
 yarn workspace @transitops/backend seed
 ```
 
+## Fuel & Expense seed (demo entries + 50 fuel logs + 50 expenses)
+
+```bash
+# Seed everything (users first, then fuel/expense data)
+yarn workspace @transitops/backend seed:all
+```
+
+### Test login accounts
+
+| Email | Password | Role |
+|-------|----------|------|
+| admin@transitops.com | Admin@12345 | Super Admin |
+| fleet@transitops.com | Fleet@12345 | Fleet Manager |
+| finance@transitops.com | Finance@12345 | Financial Analyst |
+| driver@transitops.com | Driver@12345 | Operator (Driver) |
+| safety@transitops.com | Safety@12345 | Safety Officer |
+
+### Demo searchable entries
+
+- Fuel: `VH-1001` at Shell Highway Station
+- Expense: `Highway Toll I-95` (PENDING), `Warehouse Parking Fee` (APPROVED)
+
+See `apps/backend/FUEL_EXPENSE_README.md` for full module documentation.
+
 ## Scripts
 
 | Command | Description |
@@ -57,4 +81,10 @@ yarn workspace @transitops/backend seed
 ## Notes
 
 - Auth login/refresh are scaffolded (NotImplemented on API; UI shell uses stub tokens).
-- Module screens (Fleet, Drivers, Trips, etc.) are UI shells with mock data — no business APIs yet.
+- **Fuel & Expense Management** is fully implemented with CRUD APIs, analytics, and UI.
+- Other module screens (Fleet, Drivers, Trips, etc.) are UI shells with mock data.
+- If fuel/expense APIs return **404**, restart the backend so it loads the latest modules:
+  ```bash
+  # stop any old process on port 4000, then:
+  yarn dev:backend
+  ```
