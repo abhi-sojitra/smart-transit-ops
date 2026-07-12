@@ -1,5 +1,12 @@
 import { z } from 'zod';
 import { ExpenseStatus, ExpenseType, FuelType } from '@transitops/shared-types';
+import { startOfToday } from '@/utils/date';
+
+function isFutureDate(value: string): boolean {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return false;
+  return date.getTime() > startOfToday().getTime();
+}
 
 export const fuelFormSchema = z.object({
   vehicleId: z.string().min(1, 'Vehicle is required'),
@@ -10,7 +17,10 @@ export const fuelFormSchema = z.object({
   quantity: z.coerce.number().positive('Quantity must be greater than zero'),
   pricePerLiter: z.coerce.number().positive('Price must be greater than zero'),
   odometerReading: z.coerce.number().min(0).optional(),
-  filledAt: z.string().min(1, 'Date is required'),
+  filledAt: z
+    .string()
+    .min(1, 'Date is required')
+    .refine((value) => !isFutureDate(value), 'Filled date cannot be in the future'),
   receiptImage: z.string().url('Must be a valid URL').optional().or(z.literal('')),
   notes: z.string().optional(),
 });
@@ -23,7 +33,10 @@ export const expenseFormSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   description: z.string().optional(),
   amount: z.coerce.number().positive('Amount must be greater than zero'),
-  expenseDate: z.string().min(1, 'Date is required'),
+  expenseDate: z
+    .string()
+    .min(1, 'Date is required')
+    .refine((value) => !isFutureDate(value), 'Expense date cannot be in the future'),
   receiptImage: z.string().url('Must be a valid URL').optional().or(z.literal('')),
   status: z.nativeEnum(ExpenseStatus).optional(),
   notes: z.string().optional(),
@@ -55,3 +68,20 @@ export const expenseFilterSchema = z.object({
 
 export type FuelFilterValues = z.infer<typeof fuelFilterSchema>;
 export type ExpenseFilterValues = z.infer<typeof expenseFilterSchema>;
+
+export type FuelSortField = 'createdAt' | 'totalCost' | 'quantity' | 'filledAt';
+export type ExpenseSortField = 'createdAt' | 'amount' | 'expenseDate' | 'expenseType';
+
+export interface FuelFiltersState extends FuelFilterValues {
+  sortBy: FuelSortField;
+  sortOrder: 'asc' | 'desc';
+  page: number;
+  limit: number;
+}
+
+export interface ExpenseFiltersState extends ExpenseFilterValues {
+  sortBy: ExpenseSortField;
+  sortOrder: 'asc' | 'desc';
+  page: number;
+  limit: number;
+}

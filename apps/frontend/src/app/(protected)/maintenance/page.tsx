@@ -22,7 +22,6 @@ import {
   useDeleteMaintenance,
   useMaintenanceList,
   useMaintenanceStatistics,
-  useMaintenanceVehicles,
   useStartMaintenance,
 } from '@/hooks/use-maintenance';
 import type { Maintenance, MaintenanceListParams } from '@/types/maintenance';
@@ -40,7 +39,6 @@ export default function MaintenancePage() {
 
   const listQuery = useMaintenanceList(filters);
   const statsQuery = useMaintenanceStatistics();
-  const vehiclesQuery = useMaintenanceVehicles();
   const startMutation = useStartMaintenance();
   const completeMutation = useCompleteMaintenance();
   const cancelMutation = useCancelMaintenance();
@@ -113,7 +111,6 @@ export default function MaintenancePage() {
 
       <MaintenanceFilters
         value={filters}
-        vehicles={vehiclesQuery.data ?? []}
         onChange={setFilters}
       />
 

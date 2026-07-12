@@ -1,36 +1,28 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { motion, useReducedMotion } from 'framer-motion';
 import { PageHeader } from '@/components/layout/page-header';
 import { Breadcrumb } from '@/components/layout/breadcrumb';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { FuelForm } from '@/components/fuel/FuelForm';
+import { FuelForm } from '@/components/fuel';
+import { pageFade } from '@/components/drivers/motion';
 import { useCreateFuel } from '@/hooks/use-fuel';
 import type { FuelFormValues } from '@/types/fuel-expense';
-import { notify } from '@/utils/notify';
+import { toast } from 'sonner';
+import { AxiosError } from 'axios';
 
 export default function NewFuelPage() {
   const router = useRouter();
-  const createFuel = useCreateFuel();
-
-  const handleSubmit = async (values: FuelFormValues) => {
-    try {
-      await createFuel.mutateAsync({
-        ...values,
-        tripId: values.tripId || undefined,
-        driverId: values.driverId || undefined,
-        receiptImage: values.receiptImage || undefined,
-        notes: values.notes || undefined,
-      });
-      notify.fuelAdded();
-      router.push('/fuel');
-    } catch (err) {
-      notify.error(err instanceof Error ? err.message : 'Failed to add fuel log');
-    }
-  };
+  const reduceMotion = useReducedMotion();
+  const createMutation = useCreateFuel();
 
   return (
-    <div className="space-y-6">
+    <motion.div
+      className="space-y-6"
+      variants={pageFade}
+      initial={reduceMotion ? false : 'hidden'}
+      animate="show"
+    >
       <div>
         <Breadcrumb
           items={[
@@ -42,14 +34,30 @@ export default function NewFuelPage() {
         <PageHeader title="Add Fuel Log" description="Record a new fuel purchase for a vehicle." />
       </div>
 
-      <Card className="max-w-3xl">
-        <CardHeader>
-          <CardTitle className="text-base">Fuel Details</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <FuelForm onSubmit={handleSubmit} loading={createFuel.isPending} />
-        </CardContent>
-      </Card>
-    </div>
+      <FuelForm
+        submitting={createMutation.isPending}
+        submitLabel="Create Fuel Log"
+        onCancel={() => router.push('/fuel')}
+        onSubmit={async (values: FuelFormValues) => {
+          try {
+            const log = await createMutation.mutateAsync({
+              ...values,
+              tripId: values.tripId || undefined,
+              driverId: values.driverId || undefined,
+              receiptImage: values.receiptImage || undefined,
+              notes: values.notes || undefined,
+            });
+            toast.success('Fuel log added');
+            router.push(`/fuel/${log.id}`);
+          } catch (error) {
+            const message =
+              error instanceof AxiosError
+                ? ((error.response?.data as { message?: string })?.message ?? error.message)
+                : 'Failed to add fuel log';
+            toast.error(message);
+          }
+        }}
+      />
+    </motion.div>
   );
 }

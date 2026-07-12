@@ -5,9 +5,9 @@ import {
   MAINTENANCE_STATUS_OPTIONS,
   MAINTENANCE_TYPE_OPTIONS,
   type MaintenanceListParams,
-  type VehicleLookup,
 } from '@/types/maintenance';
-import { Input } from '@/components/ui/input';
+import { DateRangePicker } from '@/components/ui/date-range-picker';
+import { VehicleSelect } from '@/components/fleet/vehicle-select';
 import { SearchInput } from '@/components/ui/search-input';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,11 +20,10 @@ import {
 
 interface MaintenanceFiltersProps {
   value: MaintenanceListParams;
-  vehicles?: VehicleLookup[];
   onChange: (next: MaintenanceListParams) => void;
 }
 
-export function MaintenanceFilters({ value, vehicles = [], onChange }: MaintenanceFiltersProps) {
+export function MaintenanceFilters({ value, onChange }: MaintenanceFiltersProps) {
   const set = (patch: Partial<MaintenanceListParams>) =>
     onChange({ ...value, page: 1, ...patch });
 
@@ -92,33 +91,20 @@ export function MaintenanceFilters({ value, vehicles = [], onChange }: Maintenan
         </Select>
       </div>
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <Select
-          value={value.vehicleId || 'all'}
-          onValueChange={(v) => set({ vehicleId: v === 'all' ? undefined : v })}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Vehicle" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All vehicles</SelectItem>
-            {vehicles.map((v) => (
-              <SelectItem key={v.id} value={v.id}>
-                {v.vehicleNumber} — {v.model}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Input
-          type="date"
-          value={value.startDateFrom ?? ''}
-          onChange={(e) => set({ startDateFrom: e.target.value || undefined })}
-          aria-label="Start date from"
+        <VehicleSelect
+          allowAll
+          allLabel="All vehicles"
+          valueKey="id"
+          value={value.vehicleId ?? ''}
+          onChange={(vehicleId) => set({ vehicleId: vehicleId || undefined })}
+          placeholder="All vehicles"
         />
-        <Input
-          type="date"
-          value={value.startDateTo ?? ''}
-          onChange={(e) => set({ startDateTo: e.target.value || undefined })}
-          aria-label="Start date to"
+        <DateRangePicker
+          className="md:col-span-2"
+          value={{ from: value.startDateFrom, to: value.startDateTo }}
+          onChange={({ from, to }) => set({ startDateFrom: from, startDateTo: to })}
+          placeholder="Filter by start date"
+          numberOfMonths={1}
         />
         <Select
           value={`${value.sortBy ?? 'createdAt'}:${value.sortOrder ?? 'desc'}`}

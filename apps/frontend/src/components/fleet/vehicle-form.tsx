@@ -1,12 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { motion, useReducedMotion } from 'framer-motion';
 import { FormField } from '@/components/forms/form-field';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import {
@@ -166,6 +167,7 @@ export function VehicleForm({
     handleSubmit,
     setValue,
     watch,
+    control,
     formState: { errors },
   } = useForm<VehicleFormSchema>({
     resolver: zodResolver(vehicleFormSchema),
@@ -285,7 +287,18 @@ export function VehicleForm({
             <Input id="mileage" type="number" min={0} {...register('mileage')} />
           </FormField>
           <FormField label="Purchase Date" htmlFor="purchaseDate" error={errors.purchaseDate?.message}>
-            <Input id="purchaseDate" type="date" {...register('purchaseDate')} />
+            <Controller
+              name="purchaseDate"
+              control={control}
+              render={({ field }) => (
+                <DatePicker
+                  id="purchaseDate"
+                  value={field.value}
+                  onChange={field.onChange}
+                  disableFuture
+                />
+              )}
+            />
           </FormField>
         </Section>
 
@@ -295,24 +308,53 @@ export function VehicleForm({
             htmlFor="registrationExpiryDate"
             error={errors.registrationExpiryDate?.message}
           >
-            <Input id="registrationExpiryDate" type="date" {...register('registrationExpiryDate')} />
+            <Controller
+              name="registrationExpiryDate"
+              control={control}
+              render={({ field }) => (
+                <DatePicker
+                  id="registrationExpiryDate"
+                  value={field.value}
+                  onChange={field.onChange}
+                  requireFuture
+                />
+              )}
+            />
           </FormField>
           <FormField
             label="Insurance Expiry"
             htmlFor="insuranceExpiryDate"
             error={errors.insuranceExpiryDate?.message}
           >
-            <Input id="insuranceExpiryDate" type="date" {...register('insuranceExpiryDate')} />
+            <Controller
+              name="insuranceExpiryDate"
+              control={control}
+              render={({ field }) => (
+                <DatePicker
+                  id="insuranceExpiryDate"
+                  value={field.value}
+                  onChange={field.onChange}
+                  requireFuture
+                />
+              )}
+            />
           </FormField>
           <FormField
             label="Fitness Certificate Expiry"
             htmlFor="fitnessCertificateExpiryDate"
             error={errors.fitnessCertificateExpiryDate?.message}
           >
-            <Input
-              id="fitnessCertificateExpiryDate"
-              type="date"
-              {...register('fitnessCertificateExpiryDate')}
+            <Controller
+              name="fitnessCertificateExpiryDate"
+              control={control}
+              render={({ field }) => (
+                <DatePicker
+                  id="fitnessCertificateExpiryDate"
+                  value={field.value}
+                  onChange={field.onChange}
+                  requireFuture
+                />
+              )}
             />
           </FormField>
           <FormField label="Status" htmlFor="status" error={errors.status?.message}>
@@ -342,14 +384,36 @@ export function VehicleForm({
             htmlFor="lastServiceDate"
             error={errors.lastServiceDate?.message}
           >
-            <Input id="lastServiceDate" type="date" {...register('lastServiceDate')} />
+            <Controller
+              name="lastServiceDate"
+              control={control}
+              render={({ field }) => (
+                <DatePicker
+                  id="lastServiceDate"
+                  value={field.value}
+                  onChange={field.onChange}
+                  disableFuture
+                />
+              )}
+            />
           </FormField>
           <FormField
             label="Next Service Due"
             htmlFor="nextServiceDueDate"
             error={errors.nextServiceDueDate?.message}
           >
-            <Input id="nextServiceDueDate" type="date" {...register('nextServiceDueDate')} />
+            <Controller
+              name="nextServiceDueDate"
+              control={control}
+              render={({ field }) => (
+                <DatePicker
+                  id="nextServiceDueDate"
+                  value={field.value}
+                  onChange={field.onChange}
+                  minDate={watch('lastServiceDate') || undefined}
+                />
+              )}
+            />
           </FormField>
           <FormField label="Depot City" htmlFor="depotCity" error={errors.depotCity?.message}>
             <Input id="depotCity" {...register('depotCity')} />

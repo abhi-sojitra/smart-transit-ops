@@ -1,6 +1,6 @@
 'use client';
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { AxiosError } from 'axios';
 import { fleetApi } from '@/services/fleet';
@@ -14,6 +14,7 @@ export const fleetKeys = {
   detail: (id: string) => [...fleetKeys.details(), id] as const,
   statistics: () => [...fleetKeys.all, 'statistics'] as const,
   available: () => [...fleetKeys.all, 'available'] as const,
+  infinite: (search: string) => [...fleetKeys.lists(), 'infinite', search] as const,
 };
 
 function errorMessage(error: unknown, fallback: string): string {
@@ -31,6 +32,43 @@ export function useFleetQuery(filters: VehicleFiltersState) {
     queryKey: fleetKeys.list(filters),
     queryFn: () => fleetApi.list(filters),
     placeholderData: (prev) => prev,
+  });
+}
+
+const FLEET_INFINITE_BASE: Omit<VehicleFiltersState, 'page' | 'limit' | 'search'> = {
+  status: 'ALL',
+  vehicleType: 'ALL',
+  fuelType: 'ALL',
+  depotCity: '',
+  depotState: '',
+  yearMin: '',
+  yearMax: '',
+  mileageMin: '',
+  mileageMax: '',
+  sortBy: 'vehicleId',
+  sortOrder: 'asc',
+};
+
+const FLEET_PAGE_SIZE = 20;
+
+/** Paginated fleet list for scroll-loading vehicle pickers. */
+export function useFleetInfiniteQuery(search = '', enabled = true) {
+  return useInfiniteQuery({
+    queryKey: fleetKeys.infinite(search),
+    queryFn: ({ pageParam }) =>
+      fleetApi.list({
+        ...FLEET_INFINITE_BASE,
+        search,
+        page: pageParam,
+        limit: FLEET_PAGE_SIZE,
+      }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) => {
+      const meta = lastPage.meta;
+      if (!meta || meta.page >= meta.totalPages) return undefined;
+      return meta.page + 1;
+    },
+    enabled,
   });
 }
 

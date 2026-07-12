@@ -1,5 +1,6 @@
 'use client';
 
+import * as React from 'react';
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -17,7 +18,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useAvailableDrivers, useAvailableVehicles } from '@/hooks/use-trips';
+import { VehicleSelect } from '@/components/fleet/vehicle-select';
+import { useAvailableDrivers } from '@/hooks/use-trips';
 import type { CreateTripInput } from '@/types/trip';
 
 const schema = z
@@ -58,11 +60,6 @@ function toLocalInput(value?: string) {
 }
 
 export function TripForm({ defaultValues, submitLabel = 'Save trip', loading, onSubmit }: TripFormProps) {
-  const {
-    data: vehicles = [],
-    isLoading: loadingVehicles,
-    isError: vehiclesError,
-  } = useAvailableVehicles();
   const {
     data: drivers = [],
     isLoading: loadingDrivers,
@@ -105,7 +102,10 @@ export function TripForm({ defaultValues, submitLabel = 'Save trip', loading, on
 
   const selectedVehicleId = watch('vehicleId');
   const selectedDriverId = watch('driverId');
-  const selectedVehicle = vehicles.find((v) => String(v._id) === selectedVehicleId);
+  const plannedStartDate = watch('plannedStartDate');
+  const [selectedVehicleCapacity, setSelectedVehicleCapacity] = React.useState<number | null>(null);
+  const minStartDateTime = toLocalInput(new Date().toISOString());
+  const minEndDateTime = plannedStartDate || minStartDateTime;
 
   return (
     <form
@@ -136,10 +136,20 @@ export function TripForm({ defaultValues, submitLabel = 'Save trip', loading, on
             htmlFor="plannedStartDate"
             error={errors.plannedStartDate?.message}
           >
-            <Input id="plannedStartDate" type="datetime-local" {...register('plannedStartDate')} />
+            <Input
+              id="plannedStartDate"
+              type="datetime-local"
+              min={minStartDateTime}
+              {...register('plannedStartDate')}
+            />
           </FormField>
           <FormField label="Planned end *" htmlFor="plannedEndDate" error={errors.plannedEndDate?.message}>
-            <Input id="plannedEndDate" type="datetime-local" {...register('plannedEndDate')} />
+            <Input
+              id="plannedEndDate"
+              type="datetime-local"
+              min={minEndDateTime}
+              {...register('plannedEndDate')}
+            />
           </FormField>
         </CardContent>
       </Card>
@@ -153,46 +163,20 @@ export function TripForm({ defaultValues, submitLabel = 'Save trip', loading, on
           <FormField
             label="Vehicle *"
             htmlFor="vehicleId"
-            error={
-              errors.vehicleId?.message ??
-              (vehiclesError ? 'Failed to load vehicles' : undefined)
-            }
-            description={
-              !loadingVehicles && !vehiclesError && vehicles.length === 0
-                ? 'No free vehicles right now. Cancel or complete an active trip first.'
-                : undefined
-            }
+            error={errors.vehicleId?.message}
           >
-            <Select
-              value={selectedVehicleId || undefined}
-              onValueChange={(value) =>
+            <VehicleSelect
+              id="vehicleId"
+              source="available"
+              valueKey="id"
+              value={selectedVehicleId}
+              placeholder="Select available vehicle"
+              onChange={(value) =>
                 setValue('vehicleId', value, { shouldValidate: true, shouldDirty: true })
               }
-              disabled={loadingVehicles || vehiclesError || vehicles.length === 0}
-            >
-              <SelectTrigger id="vehicleId">
-                <SelectValue
-                  placeholder={
-                    loadingVehicles
-                      ? 'Loading vehicles…'
-                      : vehicles.length === 0
-                        ? 'No available vehicles'
-                        : 'Select available vehicle'
-                  }
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {vehicles.map((vehicle) => {
-                  const id = String(vehicle._id);
-                  const name = [vehicle.make, vehicle.model].filter(Boolean).join(' ').trim();
-                  return (
-                    <SelectItem key={id} value={id}>
-                      {name || vehicle.model || vehicle.vehicleId} · cap {vehicle.maxCapacity}
-                    </SelectItem>
-                  );
-                })}
-              </SelectContent>
-            </Select>
+              onVehicleSelect={(vehicle) => setSelectedVehicleCapacity(vehicle?.maxCapacity ?? null)}
+              aria-invalid={Boolean(errors.vehicleId)}
+            />
           </FormField>
           <FormField
             label="Driver *"
@@ -238,9 +222,9 @@ export function TripForm({ defaultValues, submitLabel = 'Save trip', loading, on
               </SelectContent>
             </Select>
           </FormField>
-          {selectedVehicle ? (
+          {selectedVehicleCapacity != null ? (
             <p className="text-xs text-muted-foreground md:col-span-2">
-              Selected capacity: {selectedVehicle.maxCapacity}. Cargo weight cannot exceed this value.
+              Selected capacity: {selectedVehicleCapacity}. Cargo weight cannot exceed this value.
             </p>
           ) : null}
         </CardContent>
