@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { DatabaseModule } from './database/database.module';
 import { LoggerModule } from './logger/logger.module';
+import { RbacModule } from './common/rbac.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { RolesModule } from './modules/roles/roles.module';
@@ -29,6 +30,7 @@ import { HealthController } from './health.controller';
     }),
     LoggerModule,
     DatabaseModule,
+    RbacModule,
     AuthModule,
     UsersModule,
     RolesModule,

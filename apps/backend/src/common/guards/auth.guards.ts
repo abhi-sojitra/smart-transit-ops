@@ -4,6 +4,9 @@ import { AuthGuard } from '@nestjs/passport';
 import { RoleCode } from '@transitops/shared-types';
 import { ROLES_KEY } from '../decorators/roles.decorator';
 
+export { PermissionsGuard } from './permissions.guard';
+export type { AuthenticatedRequestUser } from './permissions.guard';
+
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') {}
 

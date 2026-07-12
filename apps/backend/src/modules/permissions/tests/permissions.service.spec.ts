@@ -22,6 +22,7 @@ describe('PermissionsService', () => {
 
   const roles = {
     findAll: jest.fn(),
+    update: jest.fn(),
   };
 
   beforeEach(async () => {

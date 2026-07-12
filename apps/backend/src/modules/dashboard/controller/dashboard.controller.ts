@@ -6,10 +6,9 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { RoleCode } from '@transitops/shared-types';
 import type { Response } from 'express';
-import { Roles } from '../../../common/decorators/roles.decorator';
-import { JwtAuthGuard, RolesGuard } from '../../../common/guards/auth.guards';
+import { RequirePermissions } from '../../../common/decorators/permissions.decorator';
+import { JwtAuthGuard, PermissionsGuard, RolesGuard } from '../../../common/guards/auth.guards';
 import {
   DashboardActivityQueryDto,
   DashboardLimitQueryDto,
@@ -18,21 +17,10 @@ import {
 import { DashboardService } from '../service/dashboard.service';
 import { ReportService } from '../service/report.service';
 
-const READ_ROLES = [
-  RoleCode.SUPER_ADMIN,
-  RoleCode.ADMIN,
-  RoleCode.FLEET_MANAGER,
-  RoleCode.DISPATCHER,
-  RoleCode.FINANCIAL_ANALYST,
-  RoleCode.SAFETY_OFFICER,
-  RoleCode.OPERATOR,
-  RoleCode.VIEWER,
-] as const;
-
 @ApiTags('Dashboard')
 @ApiBearerAuth()
 @Controller('dashboard')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard, RolesGuard)
 export class DashboardController {
   constructor(
     private readonly dashboardService: DashboardService,
@@ -40,7 +28,7 @@ export class DashboardController {
   ) {}
 
   @Get('overview')
-  @Roles(...READ_ROLES)
+  @RequirePermissions('DASHBOARD:VIEW')
   @ApiOperation({ summary: 'Fleet-wide operational overview cards' })
   @ApiResponse({ status: 200, description: 'Dashboard overview returned' })
   getOverview() {
@@ -48,63 +36,63 @@ export class DashboardController {
   }
 
   @Get('recent-activity')
-  @Roles(...READ_ROLES)
+  @RequirePermissions('DASHBOARD:VIEW')
   @ApiOperation({ summary: 'Unified recent activity timeline' })
   getRecentActivity(@Query() query: DashboardActivityQueryDto) {
     return this.dashboardService.getRecentActivity(query.limit ?? 20);
   }
 
   @Get('charts')
-  @Roles(...READ_ROLES)
+  @RequirePermissions('DASHBOARD:VIEW')
   @ApiOperation({ summary: 'Dashboard chart datasets' })
   getCharts() {
     return this.dashboardService.getCharts();
   }
 
   @Get('alerts')
-  @Roles(...READ_ROLES)
+  @RequirePermissions('DASHBOARD:VIEW')
   @ApiOperation({ summary: 'Operational alerts (critical, warning, info)' })
   getAlerts() {
     return this.dashboardService.getAlerts();
   }
 
   @Get('top-drivers')
-  @Roles(...READ_ROLES)
+  @RequirePermissions('DASHBOARD:VIEW')
   @ApiOperation({ summary: 'Top performing drivers leaderboard' })
   getTopDrivers(@Query() query: DashboardLimitQueryDto) {
     return this.dashboardService.getTopDrivers(query.limit ?? 10);
   }
 
   @Get('top-vehicles')
-  @Roles(...READ_ROLES)
+  @RequirePermissions('DASHBOARD:VIEW')
   @ApiOperation({ summary: 'Top vehicles by ROI leaderboard' })
   getTopVehicles(@Query() query: DashboardLimitQueryDto) {
     return this.dashboardService.getTopVehicles(query.limit ?? 10);
   }
 
   @Get('upcoming-maintenance')
-  @Roles(...READ_ROLES)
+  @RequirePermissions('DASHBOARD:VIEW')
   @ApiOperation({ summary: 'Upcoming scheduled maintenance' })
   getUpcomingMaintenance(@Query() query: DashboardLimitQueryDto) {
     return this.dashboardService.getUpcomingMaintenance(query.limit ?? 10);
   }
 
   @Get('recent-trips')
-  @Roles(...READ_ROLES)
+  @RequirePermissions('DASHBOARD:VIEW')
   @ApiOperation({ summary: 'Most recent trips' })
   getRecentTrips(@Query() query: DashboardLimitQueryDto) {
     return this.dashboardService.getRecentTrips(query.limit ?? 10);
   }
 
   @Get('business-summary')
-  @Roles(...READ_ROLES)
+  @RequirePermissions('DASHBOARD:VIEW')
   @ApiOperation({ summary: 'Business summary for daily/weekly/monthly period' })
   getBusinessSummary(@Query() query: ReportQueryDto) {
     return this.dashboardService.getBusinessSummary(query.period ?? 'monthly');
   }
 
   @Get('reports/export')
-  @Roles(...READ_ROLES)
+  @RequirePermissions('REPORTS:EXPORT')
   @ApiOperation({ summary: 'Export business report as CSV or PDF' })
   @ApiProduces('text/csv', 'application/pdf')
   @ApiResponse({ status: 200, description: 'Report file download' })
