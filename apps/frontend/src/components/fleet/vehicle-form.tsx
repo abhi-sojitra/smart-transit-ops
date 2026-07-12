@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { motion, useReducedMotion } from 'framer-motion';
+import { motion } from 'framer-motion';
+import { useSafeReducedMotion } from '@/hooks/use-safe-reduced-motion';
 import { FormField } from '@/components/forms/form-field';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -150,7 +151,7 @@ export function VehicleForm({
   onCancel,
 }: VehicleFormProps) {
   const sidebarCollapsed = useUiStore((s) => s.sidebarCollapsed);
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = useSafeReducedMotion();
   const [isDesktop, setIsDesktop] = useState(false);
 
   useEffect(() => {

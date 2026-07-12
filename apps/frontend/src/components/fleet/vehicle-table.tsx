@@ -14,12 +14,13 @@ import {
   Pencil,
   Trash2,
 } from 'lucide-react';
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/feedback/empty-state';
 import { VehicleStatusBadge } from '@/components/fleet/vehicle-status-badge';
 import { sectionReveal, staggerContainer, tableRowReveal } from '@/components/fleet/motion';
+import { useSafeReducedMotion } from '@/hooks/use-safe-reduced-motion';
 import { cn } from '@/utils/cn';
 import type { Vehicle, VehicleFiltersState, PaginationMeta } from '@/types/fleet';
 
@@ -74,7 +75,7 @@ function SortableHeader({
 
 function formatDate(value?: string) {
   if (!value) return '—';
-  return new Date(value).toLocaleDateString(undefined, {
+  return new Date(value).toLocaleDateString('en-GB', {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
@@ -103,7 +104,7 @@ export function VehicleTable({
   onDelete,
 }: VehicleTableProps) {
   const router = useRouter();
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = useSafeReducedMotion();
 
   const handleSort = (field: SortField) => {
     if (sortBy === field) {

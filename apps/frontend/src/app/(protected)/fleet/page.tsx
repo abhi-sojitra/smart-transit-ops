@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Download, Plus } from 'lucide-react';
 import { AxiosError } from 'axios';
-import { motion, useReducedMotion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { PageHeader } from '@/components/layout/page-header';
 import { Breadcrumb } from '@/components/layout/breadcrumb';
@@ -17,6 +17,7 @@ import { DeleteVehicleDialog } from '@/components/fleet/delete-vehicle-dialog';
 import { EmptyState } from '@/components/feedback/empty-state';
 import { downloadVehiclesCsv } from '@/components/fleet/export-vehicles';
 import { pageFade, staggerContainer } from '@/components/fleet/motion';
+import { useSafeReducedMotion } from '@/hooks/use-safe-reduced-motion';
 import { fleetApi } from '@/services/fleet';
 import {
   useDeleteVehicleMutation,
@@ -43,7 +44,7 @@ const DEFAULT_FILTERS: VehicleFiltersState = {
 };
 
 export default function FleetPage() {
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = useSafeReducedMotion();
   const [filters, setFilters] = useState<VehicleFiltersState>(DEFAULT_FILTERS);
   const [deleteTarget, setDeleteTarget] = useState<Vehicle | null>(null);
   const [exporting, setExporting] = useState(false);

@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Pencil, Trash2 } from 'lucide-react';
 import { AxiosError } from 'axios';
-import { motion, useReducedMotion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { PageHeader } from '@/components/layout/page-header';
 import { Breadcrumb } from '@/components/layout/breadcrumb';
 import { Button } from '@/components/ui/button';
@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { pageFade, staggerContainer, staggerItem } from '@/components/fleet/motion';
+import { useSafeReducedMotion } from '@/hooks/use-safe-reduced-motion';
 import {
   useDeleteVehicleMutation,
   useUpdateVehicleStatusMutation,
@@ -31,7 +32,11 @@ import { VehicleStatus } from '@/types/fleet';
 
 function formatDate(value?: string) {
   if (!value) return '—';
-  return new Date(value).toLocaleDateString();
+  return new Date(value).toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
 }
 
 function DetailItem({ label, value }: { label: string; value?: string | number | null }) {
@@ -47,7 +52,7 @@ export default function VehicleDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const id = params.id;
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = useSafeReducedMotion();
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const { data: vehicle, isLoading, error } = useVehicleQuery(id);

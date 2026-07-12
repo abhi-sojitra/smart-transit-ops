@@ -1,7 +1,8 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { motion, useReducedMotion } from 'framer-motion';
+import { motion } from 'framer-motion';
+import { useSafeReducedMotion } from '@/hooks/use-safe-reduced-motion';
 import { PageHeader } from '@/components/layout/page-header';
 import { Breadcrumb } from '@/components/layout/breadcrumb';
 import { VehicleForm } from '@/components/fleet/vehicle-form';
@@ -10,7 +11,7 @@ import { useCreateVehicleMutation } from '@/hooks/use-fleet';
 
 export default function NewVehiclePage() {
   const router = useRouter();
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = useSafeReducedMotion();
   const createMutation = useCreateVehicleMutation();
 
   return (
