@@ -11,6 +11,8 @@ import { ExpenseModule } from './modules/expense/expense.module';
 import { VehicleModule } from './modules/vehicle/vehicle.module';
 import { MaintenanceModule } from './modules/maintenance/maintenance.module';
 import { TripModule } from './modules/trip/trip.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { envValidationSchema } from './config/env.validation';
 import { HealthController } from './health.controller';
 
@@ -31,6 +33,8 @@ import { HealthController } from './health.controller';
     VehicleModule,
     MaintenanceModule,
     TripModule,
+    DashboardModule,
+    AnalyticsModule,
   ],
   controllers: [HealthController],
 })

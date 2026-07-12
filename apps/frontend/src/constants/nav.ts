@@ -9,6 +9,7 @@ import {
   BarChart3,
   Settings,
   Receipt,
+  FileText,
 } from 'lucide-react';
 
 export const APP_NAME = 'TransitOps';
@@ -33,9 +34,10 @@ export const NAV_ITEMS: NavItem[] = [
     children: [
       { title: 'Fuel Logs', href: '/fuel', icon: Fuel },
       { title: 'Expenses', href: '/expenses', icon: Receipt },
-      { title: 'Analytics', href: '/analytics', icon: BarChart3 },
     ],
   },
+  { title: 'Analytics', href: '/analytics', icon: BarChart3 },
+  { title: 'Reports', href: '/reports', icon: FileText },
   { title: 'Settings', href: '/settings', icon: Settings },
 ];
 
