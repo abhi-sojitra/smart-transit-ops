@@ -27,6 +27,7 @@ function makeVehicleDoc(overrides: Record<string, unknown> = {}) {
     year: 2022,
     vehicleType: VehicleType.BUS,
     fuelType: FuelType.DIESEL,
+    maxCapacity: 500,
     mileage: 84210,
     registrationExpiryDate: expiry,
     insuranceExpiryDate: expiry,
@@ -77,6 +78,7 @@ describe('VehicleService', () => {
     model: 'Starbus Ultra',
     vehicleType: VehicleType.BUS,
     fuelType: FuelType.DIESEL,
+    maxCapacity: 500,
     mileage: 84210,
     registrationExpiryDate: futureExpiry(),
     insuranceExpiryDate: futureExpiry(),
@@ -90,11 +92,19 @@ describe('VehicleService', () => {
     const result = await service.create(baseDto());
 
     expect(result.vehicleId).toBe('VH-1001');
-    expect(repository.create).toHaveBeenCalled();
+    expect(repository.create).toHaveBeenCalledWith(
+      expect.objectContaining({ maxCapacity: 500 }),
+    );
   });
 
   it('throws ConflictException when vehicleId exists', async () => {
     repository.findByVehicleId.mockResolvedValue(makeVehicleDoc() as never);
+
+    await expect(service.create(baseDto())).rejects.toThrow(ConflictException);
+  });
+
+  it('throws ConflictException when registrationNumber exists', async () => {
+    repository.findByRegistrationNumber.mockResolvedValue(makeVehicleDoc() as never);
 
     await expect(service.create(baseDto())).rejects.toThrow(ConflictException);
   });

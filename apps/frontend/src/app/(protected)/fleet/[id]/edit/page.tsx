@@ -2,7 +2,8 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { AxiosError } from 'axios';
-import { motion, useReducedMotion } from 'framer-motion';
+import { motion } from 'framer-motion';
+import { useSafeReducedMotion } from '@/hooks/use-safe-reduced-motion';
 import { PageHeader } from '@/components/layout/page-header';
 import { Breadcrumb } from '@/components/layout/breadcrumb';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -20,7 +21,7 @@ export default function EditVehiclePage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const id = params.id;
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = useSafeReducedMotion();
 
   const { data: vehicle, isLoading, error } = useVehicleQuery(id);
   const updateMutation = useUpdateVehicleMutation(id);
@@ -79,6 +80,7 @@ export default function EditVehiclePage() {
           fuelType: vehicle.fuelType,
           color: vehicle.color ?? '',
           seatingCapacity: vehicle.seatingCapacity,
+          maxCapacity: vehicle.maxCapacity,
           mileage: vehicle.mileage,
           purchaseDate: toDateInput(vehicle.purchaseDate),
           registrationExpiryDate: toDateInput(vehicle.registrationExpiryDate),

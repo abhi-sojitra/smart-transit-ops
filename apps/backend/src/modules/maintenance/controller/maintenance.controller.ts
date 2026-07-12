@@ -24,10 +24,10 @@ import {
 import { diskStorage } from 'multer';
 import { extname, join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
-import { RoleCode, type JwtPayload } from '@transitops/shared-types';
+import { type JwtPayload } from '@transitops/shared-types';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
-import { Roles } from '../../../common/decorators/roles.decorator';
-import { JwtAuthGuard, RolesGuard } from '../../../common/guards/auth.guards';
+import { RequirePermissions } from '../../../common/decorators/permissions.decorator';
+import { JwtAuthGuard, PermissionsGuard, RolesGuard } from '../../../common/guards/auth.guards';
 import {
   CancelMaintenanceDto,
   CompleteMaintenanceDto,
@@ -37,15 +37,6 @@ import {
 import { QueryMaintenanceDto } from '../dto/query-maintenance.dto';
 import { MaintenanceService } from '../service/maintenance.service';
 
-const WRITE_ROLES = [RoleCode.SUPER_ADMIN, RoleCode.ADMIN, RoleCode.FLEET_MANAGER] as const;
-const READ_ROLES = [
-  RoleCode.SUPER_ADMIN,
-  RoleCode.ADMIN,
-  RoleCode.FLEET_MANAGER,
-  RoleCode.SAFETY_OFFICER,
-  RoleCode.FINANCIAL_ANALYST,
-] as const;
-
 const uploadDir = join(process.cwd(), 'uploads', 'maintenance');
 if (!existsSync(uploadDir)) {
   mkdirSync(uploadDir, { recursive: true });
@@ -54,12 +45,12 @@ if (!existsSync(uploadDir)) {
 @ApiTags('Maintenance')
 @ApiBearerAuth()
 @Controller('maintenance')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard, RolesGuard)
 export class MaintenanceController {
   constructor(private readonly maintenanceService: MaintenanceService) {}
 
   @Post()
-  @Roles(...WRITE_ROLES)
+  @RequirePermissions('MAINTENANCE:CREATE')
   @ApiOperation({
     summary: 'Create maintenance record',
     description:
@@ -110,7 +101,7 @@ export class MaintenanceController {
   }
 
   @Get()
-  @Roles(...READ_ROLES)
+  @RequirePermissions('MAINTENANCE:VIEW')
   @ApiOperation({
     summary: 'List maintenance records',
     description: 'Supports pagination, search, filters (status, priority, type, vehicle, date range), and sorting.',
@@ -131,7 +122,7 @@ export class MaintenanceController {
   }
 
   @Get('statistics')
-  @Roles(...READ_ROLES)
+  @RequirePermissions('MAINTENANCE:VIEW')
   @ApiOperation({
     summary: 'Maintenance statistics',
     description:
@@ -160,7 +151,7 @@ export class MaintenanceController {
   }
 
   @Get('lookups/vehicles')
-  @Roles(...READ_ROLES)
+  @RequirePermissions('MAINTENANCE:VIEW')
   @ApiOperation({
     summary: 'Vehicles lookup for maintenance forms',
     description: 'Returns non-deleted vehicles for selection. Does not replace the Vehicle Module.',
@@ -170,7 +161,7 @@ export class MaintenanceController {
   }
 
   @Get('vehicle/:vehicleId/history')
-  @Roles(...READ_ROLES)
+  @RequirePermissions('MAINTENANCE:VIEW')
   @ApiOperation({ summary: 'Vehicle maintenance history' })
   @ApiParam({ name: 'vehicleId', description: 'Vehicle ObjectId' })
   vehicleHistory(@Param('vehicleId') vehicleId: string) {
@@ -178,7 +169,7 @@ export class MaintenanceController {
   }
 
   @Get('vehicle/:vehicleId/in-maintenance')
-  @Roles(...READ_ROLES)
+  @RequirePermissions('MAINTENANCE:VIEW')
   @ApiOperation({
     summary: 'Check if vehicle is in active maintenance',
     description: 'Reusable by Trip/Dispatch to exclude vehicles in shop.',
@@ -189,7 +180,7 @@ export class MaintenanceController {
   }
 
   @Get(':id')
-  @Roles(...READ_ROLES)
+  @RequirePermissions('MAINTENANCE:VIEW')
   @ApiOperation({ summary: 'Get maintenance details' })
   @ApiParam({ name: 'id', description: 'Maintenance ObjectId' })
   async findOne(@Param('id') id: string) {
@@ -201,7 +192,7 @@ export class MaintenanceController {
   }
 
   @Patch(':id')
-  @Roles(...WRITE_ROLES)
+  @RequirePermissions('MAINTENANCE:UPDATE')
   @ApiOperation({
     summary: 'Update maintenance',
     description: 'Completed records may only update notes.',
@@ -220,14 +211,14 @@ export class MaintenanceController {
   }
 
   @Delete(':id')
-  @Roles(...WRITE_ROLES)
+  @RequirePermissions('MAINTENANCE:DELETE')
   @ApiOperation({ summary: 'Soft delete maintenance record' })
   remove(@Param('id') id: string, @CurrentUser() user?: JwtPayload) {
     return this.maintenanceService.softDelete(id, user?.sub);
   }
 
   @Patch(':id/start')
-  @Roles(...WRITE_ROLES)
+  @RequirePermissions('MAINTENANCE:UPDATE')
   @ApiOperation({
     summary: 'Start maintenance (mark In Progress)',
     description: 'Moves a Scheduled work order to In Progress and keeps the vehicle In Shop.',
@@ -246,7 +237,7 @@ export class MaintenanceController {
   }
 
   @Patch(':id/complete')
-  @Roles(...WRITE_ROLES)
+  @RequirePermissions('MAINTENANCE:COMPLETE')
   @ApiOperation({
     summary: 'Close / complete maintenance',
     description: 'Sets status to COMPLETED and restores vehicle to AVAILABLE (unless Retired).',
@@ -264,7 +255,7 @@ export class MaintenanceController {
   }
 
   @Patch(':id/cancel')
-  @Roles(...WRITE_ROLES)
+  @RequirePermissions('MAINTENANCE:UPDATE')
   @ApiOperation({
     summary: 'Cancel maintenance',
     description: 'Cancels the job and restores vehicle availability when no other active work remains.',
@@ -282,7 +273,7 @@ export class MaintenanceController {
   }
 
   @Post(':id/attachments')
-  @Roles(...WRITE_ROLES)
+  @RequirePermissions('MAINTENANCE:UPDATE')
   @ApiOperation({ summary: 'Upload maintenance attachments (images and PDFs only)' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
@@ -297,13 +288,21 @@ export class MaintenanceController {
     FilesInterceptor('files', 10, {
       storage: diskStorage({
         destination: uploadDir,
-        filename: (_req, file, cb) => {
+        filename: (
+          _req: unknown,
+          file: Express.Multer.File,
+          cb: (error: Error | null, filename: string) => void,
+        ) => {
           const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
           cb(null, `${unique}${extname(file.originalname)}`);
         },
       }),
       limits: { fileSize: 10 * 1024 * 1024 },
-      fileFilter: (_req, file, cb) => {
+      fileFilter: (
+        _req: unknown,
+        file: Express.Multer.File,
+        cb: (error: Error | null, acceptFile: boolean) => void,
+      ) => {
         const allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
         const ext = extname(file.originalname).toLowerCase();
         const allowedExt = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.pdf'];

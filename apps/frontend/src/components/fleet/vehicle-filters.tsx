@@ -1,7 +1,7 @@
 'use client';
 
 import { Search } from 'lucide-react';
-import { motion, useReducedMotion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { sectionReveal } from '@/components/fleet/motion';
+import { useSafeReducedMotion } from '@/hooks/use-safe-reduced-motion';
 import { VehicleStatus, VehicleType, FuelType, type VehicleFiltersState } from '@/types/fleet';
 
 interface VehicleFiltersProps {
@@ -21,7 +22,7 @@ interface VehicleFiltersProps {
 }
 
 export function VehicleFilters({ filters, onChange, onReset }: VehicleFiltersProps) {
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = useSafeReducedMotion();
 
   return (
     <motion.div

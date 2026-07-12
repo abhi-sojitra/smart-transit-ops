@@ -68,6 +68,7 @@ export function hasExpiredCompliance(doc: VehicleDocument, now = new Date()): bo
 export function mapVehicleToResponse(doc: VehicleDocument) {
   return {
     id: String(doc._id),
+    _id: String(doc._id),
     vehicleId: doc.vehicleId,
     registrationNumber: doc.registrationNumber,
     vin: doc.vin,
@@ -78,6 +79,7 @@ export function mapVehicleToResponse(doc: VehicleDocument) {
     fuelType: doc.fuelType,
     color: doc.color,
     seatingCapacity: doc.seatingCapacity,
+    maxCapacity: doc.maxCapacity ?? doc.seatingCapacity ?? 0,
     mileage: doc.mileage,
     purchaseDate: toIso(doc.purchaseDate),
     registrationExpiryDate: toIso(doc.registrationExpiryDate)!,

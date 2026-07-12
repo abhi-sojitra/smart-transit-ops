@@ -2,13 +2,11 @@ import { Types } from 'mongoose';
 import {
   CargoType,
   DriverStatus,
-  MaintenanceStatus,
   TripStatus,
   VehicleStatus,
 } from '@transitops/shared-types';
-import { VehicleSchema } from '../../modules/vehicle/schema/vehicle.schema';
+import { VehicleSchema } from '../../modules/fleet/schema/vehicle.schema';
 import { DriverSchema } from '../../modules/driver/schema/driver.schema';
-import { MaintenanceSchema } from '../../modules/maintenance/schema/maintenance.schema';
 import { TripSchema } from '../../modules/trip/schema/trip.schema';
 
 const CITIES = [
@@ -42,77 +40,54 @@ const TRIP_STATUSES: TripStatus[] = [
 export async function seedTripDispatcherData(mongoose: typeof import('mongoose')) {
   const VehicleModel = mongoose.models.Vehicle || mongoose.model('Vehicle', VehicleSchema);
   const DriverModel = mongoose.models.Driver || mongoose.model('Driver', DriverSchema);
-  const MaintenanceModel =
-    mongoose.models.Maintenance || mongoose.model('Maintenance', MaintenanceSchema);
   const TripModel = mongoose.models.Trip || mongoose.model('Trip', TripSchema);
 
-  console.log('Seeding vehicles for trip dispatcher...');
-  await Promise.all([TripModel.deleteMany({}), MaintenanceModel.deleteMany({}), VehicleModel.deleteMany({})]);
-  await Promise.allSettled([VehicleModel.collection.dropIndexes()]);
+  console.log('Preparing trip dispatcher seed (using existing fleet vehicles)...');
+  await TripModel.deleteMany({});
 
-  const vehicles = [];
-  for (let i = 1; i <= 12; i++) {
-    const status =
-      i === 2
-        ? VehicleStatus.MAINTENANCE
-        : i === 3
-          ? VehicleStatus.ON_TRIP
-          : i === 12
-            ? VehicleStatus.RETIRED
-            : VehicleStatus.AVAILABLE;
-    const doc = await VehicleModel.create({
-      vehicleId: `VH-${1000 + i}`,
-      vehicleNumber: `VH-${1000 + i}`,
-      registrationNumber: `REG-${1000 + i}`,
-      make: ['Freightliner', 'Volvo', 'Kenworth', 'Peterbilt'][i % 4],
-      model: `Model-${i}`,
-      year: 2019 + (i % 6),
-      type: 'Tractor',
-      status,
-      maxCapacity: 15000 + i * 500,
-      mileage: 40000 + i * 3500,
-      isDeleted: false,
-    });
-    vehicles.push(doc);
+  const vehicles = await VehicleModel.find({ isDeleted: { $ne: true } }).exec();
+  if (!vehicles.length) {
+    throw new Error('No vehicles found. Seed fleet vehicles before trip data.');
   }
+
+  // Ensure cargo capacity exists for trip validation demos.
+  await VehicleModel.updateMany(
+    {
+      isDeleted: { $ne: true },
+      $or: [{ maxCapacity: { $exists: false } }, { maxCapacity: null }, { maxCapacity: 0 }],
+    },
+    { $set: { maxCapacity: 20000 } },
+  );
+
+  const refreshedVehicles = await VehicleModel.find({ isDeleted: { $ne: true } }).exec();
 
   const drivers = await DriverModel.find({ isDeleted: { $ne: true } }).exec();
   if (!drivers.length) {
     throw new Error('No drivers found. Seed demo drivers before trip data.');
   }
 
-  const maintenanceVehicle = vehicles.find((v) => v.status === VehicleStatus.MAINTENANCE);
-  if (maintenanceVehicle) {
-    await MaintenanceModel.create({
-      vehicleId: maintenanceVehicle._id,
-      serviceType: 'Brake Overhaul',
-      status: MaintenanceStatus.IN_PROGRESS,
-      date: new Date(),
-      cost: 1200,
-      notes: 'Seeded active maintenance',
-      isDeleted: false,
-    });
-  }
-
   console.log('Seeding 50 trips...');
-  const availableVehicles = vehicles.filter((v) => v.status === VehicleStatus.AVAILABLE);
+  const availableVehicles = refreshedVehicles.filter((v) => v.status === VehicleStatus.AVAILABLE);
   const availableDrivers = drivers.filter((d) => d.status === DriverStatus.AVAILABLE);
+  const poolVehicles = availableVehicles.length ? availableVehicles : refreshedVehicles;
+  const poolDrivers = availableDrivers.length ? availableDrivers : drivers;
 
   // Keep a few assets free so create/dispatch demos still work after seeding.
-  const reservedVehicleCount = Math.min(3, availableVehicles.length);
-  const reservedDriverCount = Math.min(3, availableDrivers.length);
-  const assignableVehicles = availableVehicles.slice(reservedVehicleCount);
-  const assignableDrivers = availableDrivers.slice(reservedDriverCount);
-  const tripVehicles = assignableVehicles.length ? assignableVehicles : availableVehicles;
-  const tripDrivers = assignableDrivers.length ? assignableDrivers : availableDrivers;
+  const reservedVehicleCount = Math.min(3, poolVehicles.length);
+  const reservedDriverCount = Math.min(3, poolDrivers.length);
+  const assignableVehicles = poolVehicles.slice(reservedVehicleCount);
+  const assignableDrivers = poolDrivers.slice(reservedDriverCount);
+  const tripVehicles = assignableVehicles.length ? assignableVehicles : poolVehicles;
+  const tripDrivers = assignableDrivers.length ? assignableDrivers : poolDrivers;
 
   for (let i = 1; i <= 50; i++) {
     const tripNumber = `TR-${String(i).padStart(4, '0')}`;
     const status = TRIP_STATUSES[i % TRIP_STATUSES.length];
     const [source, destination] = CITIES[i % CITIES.length];
     const cargo = CARGO[i % CARGO.length];
-    const vehicle = tripVehicles[i % Math.max(tripVehicles.length, 1)] ?? vehicles[0];
+    const vehicle = tripVehicles[i % Math.max(tripVehicles.length, 1)] ?? refreshedVehicles[0];
     const driver = tripDrivers[i % Math.max(tripDrivers.length, 1)] ?? drivers[0];
+    const capacity = vehicle.maxCapacity || vehicle.seatingCapacity || 20000;
     const start = new Date();
     start.setDate(start.getDate() - (50 - i));
     const end = new Date(start);
@@ -125,7 +100,7 @@ export async function seedTripDispatcherData(mongoose: typeof import('mongoose')
       vehicleId: vehicle._id as Types.ObjectId,
       driverId: driver._id as Types.ObjectId,
       cargoName: cargo.name,
-      cargoWeight: Math.min(cargo.weight, vehicle.maxCapacity ?? cargo.weight),
+      cargoWeight: Math.min(cargo.weight, capacity),
       cargoType: cargo.type,
       plannedDistance: 200 + i * 12,
       plannedStartDate: start,

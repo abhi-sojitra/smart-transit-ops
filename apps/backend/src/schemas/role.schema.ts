@@ -9,14 +9,17 @@ export class Role {
   @Prop({ type: String, enum: RoleCode, required: true, unique: true })
   code!: RoleCode;
 
-  @Prop({ required: true })
+  @Prop({ required: true, trim: true })
   name!: string;
 
-  @Prop()
+  @Prop({ trim: true })
   description?: string;
 
   @Prop({ type: [String], default: [] })
   permissions!: string[];
+
+  @Prop({ default: true })
+  isSystem!: boolean;
 }
 
 export const RoleSchema = SchemaFactory.createForClass(Role);

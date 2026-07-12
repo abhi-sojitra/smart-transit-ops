@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { VehicleStatus } from '@transitops/shared-types';
 import { Vehicle, VehicleDocument } from './schema/vehicle.schema';
 
@@ -12,12 +12,20 @@ export class VehicleRepository {
     return this.model.create(data);
   }
 
-  findById(id: string): Promise<VehicleDocument | null> {
-    return this.model.findOne({ _id: id, isDeleted: { $ne: true } }).exec();
+  async findById(id: string): Promise<VehicleDocument | null> {
+    if (Types.ObjectId.isValid(id)) {
+      const byObjectId = await this.model
+        .findOne({ _id: new Types.ObjectId(id), isDeleted: { $ne: true } })
+        .exec();
+      if (byObjectId) return byObjectId;
+    }
+    return this.findByVehicleId(id);
   }
 
   findByVehicleId(vehicleId: string): Promise<VehicleDocument | null> {
-    return this.model.findOne({ vehicleId, isDeleted: { $ne: true } }).exec();
+    return this.model
+      .findOne({ vehicleId: vehicleId.toUpperCase(), isDeleted: { $ne: true } })
+      .exec();
   }
 
   findAvailable(): Promise<VehicleDocument[]> {
@@ -34,15 +42,17 @@ export class VehicleRepository {
   }
 
   updateStatus(id: string, status: VehicleStatus): Promise<VehicleDocument | null> {
-    return this.model
-      .findOneAndUpdate({ _id: id, isDeleted: { $ne: true } }, { $set: { status } }, { new: true })
-      .exec();
+    const filter = Types.ObjectId.isValid(id)
+      ? { _id: new Types.ObjectId(id), isDeleted: { $ne: true } }
+      : { vehicleId: id.toUpperCase(), isDeleted: { $ne: true } };
+    return this.model.findOneAndUpdate(filter, { $set: { status } }, { new: true }).exec();
   }
 
   update(id: string, data: Partial<Vehicle>): Promise<VehicleDocument | null> {
-    return this.model
-      .findOneAndUpdate({ _id: id, isDeleted: { $ne: true } }, { $set: data }, { new: true })
-      .exec();
+    const filter = Types.ObjectId.isValid(id)
+      ? { _id: new Types.ObjectId(id), isDeleted: { $ne: true } }
+      : { vehicleId: id.toUpperCase(), isDeleted: { $ne: true } };
+    return this.model.findOneAndUpdate(filter, { $set: data }, { new: true }).exec();
   }
 
   countByStatus(status: VehicleStatus): Promise<number> {

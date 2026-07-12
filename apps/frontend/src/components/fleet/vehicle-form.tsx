@@ -3,7 +3,8 @@
 import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { motion, useReducedMotion } from 'framer-motion';
+import { motion } from 'framer-motion';
+import { useSafeReducedMotion } from '@/hooks/use-safe-reduced-motion';
 import { FormField } from '@/components/forms/form-field';
 import { FormSection } from '@/components/forms/form-section';
 import { FormActionBar } from '@/components/forms/form-action-bar';
@@ -32,6 +33,7 @@ import {
   FuelType,
   type VehicleFormValues,
 } from '@/types/fleet';
+import { parseVehicleUniqueConflict } from '@/lib/vehicle-form-errors';
 import { optionalString, sanitizeTextInput, uppercase } from '@/utils/form-sanitize';
 import { enhanceRegister } from '@/utils/form-register';
 import {
@@ -60,6 +62,10 @@ const vehicleFormSchema = z
     fuelType: z.nativeEnum(FuelType),
     color: optionalTrimmedString(FORM_LIMITS.name),
     seatingCapacity: z.coerce.number().min(1).max(200).optional(),
+    maxCapacity: z.coerce
+      .number({ invalid_type_error: 'Maximum load capacity is required' })
+      .min(1, 'Maximum load capacity must be at least 1 kg')
+      .max(500, 'Maximum load capacity must not exceed 500 kg'),
     mileage: z.coerce.number().min(0, 'Mileage cannot be negative.'),
     purchaseDate: z.string().optional(),
     registrationExpiryDate: z.string().min(1, 'Registration expiry date is required.'),
@@ -75,16 +81,23 @@ const vehicleFormSchema = z
     status: z.nativeEnum(VehicleStatus).optional(),
   })
   .superRefine((data, ctx) => {
+    const parseDateOnly = (value?: string) => {
+      if (!value?.trim()) return null;
+      const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value.trim());
+      if (!match) return null;
+      return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+    };
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+
     const complianceFields = [
       { key: 'registrationExpiryDate' as const, label: 'Registration expiry' },
       { key: 'insuranceExpiryDate' as const, label: 'Insurance expiry' },
       { key: 'fitnessCertificateExpiryDate' as const, label: 'Fitness expiry' },
     ];
     for (const field of complianceFields) {
-      const date = new Date(data[field.key]);
-      if (Number.isNaN(date.getTime()) || date.getTime() <= today.getTime()) {
+      const date = parseDateOnly(data[field.key]);
+      if (!date || date.getTime() <= today.getTime()) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: [field.key],
@@ -92,10 +105,27 @@ const vehicleFormSchema = z
         });
       }
     }
-    if (data.lastServiceDate && data.nextServiceDueDate) {
-      const last = new Date(data.lastServiceDate);
-      const next = new Date(data.nextServiceDueDate);
-      if (!Number.isNaN(last.getTime()) && !Number.isNaN(next.getTime()) && next < last) {
+
+    const lastService = parseDateOnly(data.lastServiceDate);
+    if (data.lastServiceDate?.trim()) {
+      if (!lastService || lastService.getTime() > today.getTime()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['lastServiceDate'],
+          message: 'Last service date must be today or a past date',
+        });
+      }
+    }
+
+    const nextService = parseDateOnly(data.nextServiceDueDate);
+    if (data.nextServiceDueDate?.trim()) {
+      if (!nextService || nextService.getTime() <= today.getTime()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['nextServiceDueDate'],
+          message: 'Next service due must be greater than today',
+        });
+      } else if (lastService && nextService.getTime() < lastService.getTime()) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['nextServiceDueDate'],
@@ -126,6 +156,7 @@ const emptyDefaults: VehicleFormSchema = {
   fuelType: FuelType.DIESEL,
   color: '',
   seatingCapacity: undefined,
+  maxCapacity: 0,
   mileage: 0,
   purchaseDate: '',
   registrationExpiryDate: '',
@@ -148,12 +179,13 @@ export function VehicleForm({
   onSubmit,
   onCancel,
 }: VehicleFormProps) {
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = useSafeReducedMotion();
 
   const {
     register,
     handleSubmit,
     setValue,
+    setError,
     watch,
     control,
     formState: { errors, isDirty },
@@ -173,6 +205,7 @@ export function VehicleForm({
     make: values.make.trim(),
     model: values.model.trim(),
     color: optionalString(values.color),
+    maxCapacity: Number(values.maxCapacity),
     purchaseDate: optionalString(values.purchaseDate),
     lastServiceDate: optionalString(values.lastServiceDate),
     nextServiceDueDate: optionalString(values.nextServiceDueDate),
@@ -193,7 +226,16 @@ export function VehicleForm({
         animate="show"
         noValidate
         onSubmit={handleSubmit(async (values) => {
-          await onSubmit(clean(values));
+          try {
+            await onSubmit(clean(values));
+          } catch (error) {
+            const conflict = parseVehicleUniqueConflict(error);
+            if (conflict) {
+              setError(conflict.field, { type: 'server', message: conflict.message });
+              return;
+            }
+            throw error;
+          }
         })}
       >
         <FormSection title="Vehicle Identity">
@@ -313,6 +355,22 @@ export function VehicleForm({
             error={errors.seatingCapacity?.message}
           >
             <Input id="seatingCapacity" type="number" min={1} {...register('seatingCapacity')} />
+          </FormField>
+          <FormField
+            label="Maximum Load Capacity (kg)"
+            htmlFor="maxCapacity"
+            required
+            error={errors.maxCapacity?.message}
+          >
+            <Input
+              id="maxCapacity"
+              type="number"
+              step={1}
+              min={1}
+              max={500}
+              placeholder="e.g. 500"
+              {...register('maxCapacity')}
+            />
           </FormField>
           <FormField label="Mileage (km)" htmlFor="mileage" error={errors.mileage?.message}>
             <Input

@@ -1,7 +1,8 @@
 'use client';
 
-import { motion, useReducedMotion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
+import { useSafeReducedMotion } from '@/hooks/use-safe-reduced-motion';
 import { VehicleStatus } from '@/types/fleet';
 
 const LABELS: Record<VehicleStatus, string> = {
@@ -14,7 +15,7 @@ const LABELS: Record<VehicleStatus, string> = {
 };
 
 export function VehicleStatusBadge({ status }: { status: VehicleStatus | string }) {
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = useSafeReducedMotion();
   const label = LABELS[status as VehicleStatus] ?? String(status).replaceAll('_', ' ');
 
   return (

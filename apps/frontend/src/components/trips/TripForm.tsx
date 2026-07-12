@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -27,32 +28,50 @@ import { positiveDecimal, sanitizeTextInput } from '@/utils/form-sanitize';
 import { enhanceRegister } from '@/utils/form-register';
 import { nonNegativeAmountField, positiveAmountField, requiredTrimmedString } from '@/utils/form-validation';
 
-const schema = z
-  .object({
-    source: requiredTrimmedString('Source location', FORM_LIMITS.text),
-    destination: requiredTrimmedString('Destination location', FORM_LIMITS.text),
-    vehicleId: z.string().min(1, 'Vehicle is required.'),
-    driverId: z.string().min(1, 'Driver is required.'),
-    cargoName: requiredTrimmedString('Cargo name', FORM_LIMITS.text),
-    cargoWeight: positiveAmountField('Cargo weight'),
-    cargoType: z.nativeEnum(CargoType, { errorMap: () => ({ message: 'Cargo type is required.' }) }),
-    plannedDistance: positiveAmountField('Planned distance'),
-    plannedStartDate: z.string().min(1, 'Planned start date and time is required.'),
-    plannedEndDate: z.string().min(1, 'Planned end date and time is required.'),
-    estimatedRevenue: nonNegativeAmountField('Estimated revenue'),
-    notes: z.string().max(FORM_LIMITS.textarea).optional(),
-  })
-  .superRefine((values, ctx) => {
-    if (new Date(values.plannedEndDate) < new Date(values.plannedStartDate)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['plannedEndDate'],
-        message: 'Planned end must be on or after the planned start.',
-      });
-    }
-  });
+const tripFormBaseSchema = z.object({
+  source: requiredTrimmedString('Source location', FORM_LIMITS.text),
+  destination: requiredTrimmedString('Destination location', FORM_LIMITS.text),
+  vehicleId: z.string().min(1, 'Vehicle is required.'),
+  driverId: z.string().min(1, 'Driver is required.'),
+  cargoName: requiredTrimmedString('Cargo name', FORM_LIMITS.text),
+  cargoWeight: positiveAmountField('Cargo weight'),
+  cargoType: z.nativeEnum(CargoType, { errorMap: () => ({ message: 'Cargo type is required.' }) }),
+  plannedDistance: positiveAmountField('Planned distance'),
+  plannedStartDate: z.string().min(1, 'Planned start date and time is required.'),
+  plannedEndDate: z.string().min(1, 'Planned end date and time is required.'),
+  estimatedRevenue: nonNegativeAmountField('Estimated revenue'),
+  notes: z.string().max(FORM_LIMITS.textarea).optional(),
+});
 
-export type TripFormValues = z.infer<typeof schema>;
+export type TripFormValues = z.infer<typeof tripFormBaseSchema>;
+
+function createTripSchema(getCapacity: () => number | null | undefined) {
+  return tripFormBaseSchema
+    .refine((values) => new Date(values.plannedEndDate) >= new Date(values.plannedStartDate), {
+      message: 'Planned end must be on or after the planned start.',
+      path: ['plannedEndDate'],
+    })
+    .superRefine((values, ctx) => {
+      if (!values.vehicleId) return;
+      const capacity = getCapacity();
+      if (capacity === null || capacity === undefined) return;
+      if (capacity <= 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['vehicleId'],
+          message: 'Vehicle has no max load capacity configured',
+        });
+        return;
+      }
+      if (values.cargoWeight > capacity) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['cargoWeight'],
+          message: `Cargo weight exceeds vehicle capacity (${capacity}).`,
+        });
+      }
+    });
+}
 
 interface TripFormProps {
   defaultValues?: Partial<TripFormValues>;
@@ -70,6 +89,10 @@ function toLocalInput(value?: string) {
   return local.toISOString().slice(0, 16);
 }
 
+function assetId(asset: { id?: string; _id?: string }): string {
+  return String(asset.id ?? asset._id ?? '');
+}
+
 export function TripForm({
   defaultValues,
   submitLabel = 'Save trip',
@@ -81,7 +104,14 @@ export function TripForm({
     data: drivers = [],
     isLoading: loadingDrivers,
     isError: driversError,
+    isSuccess: driversReady,
   } = useAvailableDrivers();
+
+  const [selectedVehicleCapacity, setSelectedVehicleCapacity] = React.useState<number | null>(null);
+  const capacityRef = useRef(selectedVehicleCapacity);
+  capacityRef.current = selectedVehicleCapacity;
+
+  const schema = useMemo(() => createTripSchema(() => capacityRef.current), []);
 
   const {
     register,
@@ -114,11 +144,19 @@ export function TripForm({
   const selectedDriverId = watch('driverId');
   const plannedStartDate = watch('plannedStartDate');
   const cargoWeight = watch('cargoWeight');
-  const [selectedVehicleCapacity, setSelectedVehicleCapacity] = React.useState<number | null>(null);
   const minStartDateTime = toLocalInput(new Date().toISOString());
   const minEndDateTime = plannedStartDate || minStartDateTime;
 
-  React.useEffect(() => {
+  useEffect(() => {
+    if (!driversReady || loadingDrivers) return;
+    if (!selectedDriverId) return;
+    const stillAvailable = drivers.some((driver) => assetId(driver) === selectedDriverId);
+    if (!stillAvailable) {
+      setValue('driverId', '', { shouldValidate: true, shouldDirty: true });
+    }
+  }, [drivers, driversReady, loadingDrivers, selectedDriverId, setValue]);
+
+  useEffect(() => {
     if (
       selectedVehicleCapacity != null &&
       cargoWeight != null &&
@@ -212,7 +250,9 @@ export function TripForm({
               onChange={(value) =>
                 setValue('vehicleId', value, { shouldValidate: true, shouldDirty: true })
               }
-              onVehicleSelect={(vehicle) => setSelectedVehicleCapacity(vehicle?.maxCapacity ?? null)}
+              onVehicleSelect={(vehicle) => {
+                setSelectedVehicleCapacity(vehicle?.maxCapacity ?? null);
+              }}
               aria-invalid={Boolean(errors.vehicleId)}
             />
           </FormField>
@@ -247,7 +287,7 @@ export function TripForm({
               </SelectTrigger>
               <SelectContent>
                 {drivers.map((driver) => {
-                  const value = String(driver.id ?? driver._id ?? '');
+                  const value = assetId(driver);
                   if (!value) return null;
                   return (
                     <SelectItem key={value} value={value}>

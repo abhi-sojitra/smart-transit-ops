@@ -5,14 +5,14 @@ import { TripRepository } from './repository/trip.repository';
 import { TripService } from './service/trip.service';
 import { TripController } from './controller/trip.controller';
 import { TripValidators } from './validators/trip.validators';
-import { VehicleModule } from '../vehicle/vehicle.module';
+import { FleetModule } from '../fleet/fleet.module';
 import { DriverModule } from '../driver/driver.module';
 import { MaintenanceModule } from '../maintenance/maintenance.module';
 
 @Module({
   imports: [
     MongooseModule.forFeature([{ name: Trip.name, schema: TripSchema }]),
-    VehicleModule,
+    FleetModule,
     DriverModule,
     MaintenanceModule,
   ],

@@ -5,14 +5,10 @@ import {
   ExpenseStatus,
   ExpenseType,
   FuelType,
-  VehicleStatus,
-  DriverStatus,
-  LicenseStatus,
-  TripStatus,
 } from '@transitops/shared-types';
 import { VehicleSchema } from '../../schemas/vehicle.schema';
-import { DriverSchema } from '../../schemas/driver.schema';
-import { TripSchema } from '../../schemas/trip.schema';
+import { DriverSchema } from '../../modules/driver/schema/driver.schema';
+import { TripSchema } from '../../modules/trip/schema/trip.schema';
 import { FuelSchema } from '../../schemas/fuel.schema';
 import { ExpenseSchema } from '../../schemas/expense.schema';
 import { UserSchema } from '../../schemas/user.schema';
@@ -157,66 +153,30 @@ async function seedFuelExpense() {
   const driverUser = await UserModel.findOne({ email: 'driver@transitops.com' });
   const driverUserId = driverUser?._id as mongoose.Types.ObjectId | undefined;
 
-  console.log('Seeding reference data (vehicles, drivers, trips)...');
+  console.log('Loading reference data (vehicles, drivers, trips)...');
 
-  const vehicleIds: string[] = [];
-  for (let i = 1; i <= 10; i++) {
-    const vehicleId = `VH-${1000 + i}`;
-    vehicleIds.push(vehicleId);
-    await VehicleModel.findOneAndUpdate(
-      { vehicleId },
-      {
-        $set: {
-          vehicleId,
-          model: randomItem(['Volvo FH16', 'Mercedes Actros', 'Scania R450', 'Tata Prima']),
-          year: 2018 + (i % 6),
-          type: randomItem(['Truck', 'Van', 'Bus']),
-          status: VehicleStatus.AVAILABLE,
-          mileage: 50000 + i * 1200,
-        },
-      },
-      { upsert: true },
-    );
+  const vehicles = await VehicleModel.find({ isDeleted: { $ne: true } }).limit(20).exec();
+  const drivers = await DriverModel.find({ isDeleted: { $ne: true } }).limit(20).exec();
+  const trips = await TripModel.find({ isDeleted: { $ne: true } }).limit(30).exec();
+
+  const vehicleIds = vehicles.map((v) => v.vehicleId).filter(Boolean);
+  const driverIds = drivers
+    .map((d) => (d as { employeeCode?: string }).employeeCode)
+    .filter((code): code is string => Boolean(code));
+  const tripIds = trips
+    .map((t) => (t as { tripNumber?: string }).tripNumber)
+    .filter((code): code is string => Boolean(code));
+
+  if (!vehicleIds.length) {
+    throw new Error('No vehicles found. Run the main seed before fuel/expense seed.');
   }
 
-  const driverIds: string[] = [];
-  for (let i = 1; i <= 8; i++) {
-    const employeeId = `DR-${3000 + i}`;
-    driverIds.push(employeeId);
-    await DriverModel.findOneAndUpdate(
-      { employeeId },
-      {
-        $set: {
-          name: `Driver ${i}`,
-          employeeId,
-          licenseType: 'Commercial',
-          licenseStatus: LicenseStatus.VALID,
-          safetyScore: 75 + (i % 20),
-          status: DriverStatus.AVAILABLE,
-        },
-      },
-      { upsert: true },
-    );
+  // Fallback demo codes used by DEMO_* entries when seed data is sparse.
+  if (!tripIds.length) {
+    tripIds.push('TR-0001', 'TR-0002', 'TR-0003');
   }
-
-  const tripIds: string[] = [];
-  for (let i = 1; i <= 15; i++) {
-    const tripId = `TR-${2000 + i}`;
-    tripIds.push(tripId);
-    await TripModel.findOneAndUpdate(
-      { tripId },
-      {
-        $set: {
-          tripId,
-          origin: randomItem(['Mumbai', 'Delhi', 'Bangalore', 'Chennai', 'Pune']),
-          destination: randomItem(['Hyderabad', 'Kolkata', 'Ahmedabad', 'Jaipur', 'Lucknow']),
-          vehicleId: randomItem(vehicleIds),
-          driverId: randomItem(driverIds),
-          status: TripStatus.COMPLETED,
-        },
-      },
-      { upsert: true },
-    );
+  if (!driverIds.length) {
+    driverIds.push('DR-3001', 'DR-3002', 'DR-3003');
   }
 
   // Maintenance docs are seeded via maintenance.seed.ts into the `maintenance` collection.

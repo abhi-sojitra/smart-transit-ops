@@ -1,15 +1,17 @@
 import {
   BadRequestException,
   Injectable,
+  NotFoundException,
 } from '@nestjs/common';
 import { CargoType, type Driver } from '@transitops/shared-types';
-import { VehicleDocument } from '../../vehicle/schema/vehicle.schema';
-import { VehicleService } from '../../vehicle/vehicle.service';
+import { VehicleService } from '../../fleet/service/vehicle.service';
 import { DriverService } from '../../driver/service/driver.service';
 import { MaintenanceService } from '../../maintenance/maintenance.service';
 
+type AssignableVehicle = Awaited<ReturnType<VehicleService['assertAssignableToTrip']>>;
+
 export interface TripValidationInput {
-  vehicle: VehicleDocument;
+  vehicle: AssignableVehicle;
   driver: Driver;
   cargoWeight: number;
   cargoType?: CargoType;
@@ -38,9 +40,6 @@ export class TripValidators {
     const errors: string[] = [];
     const warnings: string[] = [];
 
-    const vehicleBlock = this.vehicleService.isDispatchBlocked(input.vehicle);
-    if (vehicleBlock) errors.push(vehicleBlock);
-
     if (input.driver.status === 'SUSPENDED') {
       errors.push('Driver is suspended and cannot be dispatched');
     } else if (input.driver.status === 'ON_TRIP') {
@@ -55,9 +54,13 @@ export class TripValidators {
       errors.push('Vehicle has an active maintenance record; trip dispatch is blocked');
     }
 
-    if (input.cargoWeight > input.vehicle.maxCapacity) {
+    const capacity =
+      Number(input.vehicle.maxCapacity) || Number(input.vehicle.seatingCapacity) || 0;
+    if (capacity <= 0) {
+      errors.push('Vehicle has no max load capacity configured');
+    } else if (input.cargoWeight > capacity) {
       errors.push(
-        `Cargo weight (${input.cargoWeight}) exceeds vehicle max capacity (${input.vehicle.maxCapacity})`,
+        `Cargo weight (${input.cargoWeight}) exceeds vehicle capacity (${capacity})`,
       );
     }
 
@@ -103,23 +106,27 @@ export class TripValidators {
     vehicleHasActiveTrip: boolean;
     driverHasActiveTrip: boolean;
   }): Promise<TripValidationResult> {
-    const [vehicle, license, vehicleInMaintenance] = await Promise.all([
-      this.vehicleService.findById(params.vehicleId),
+    const [license, vehicleInMaintenance] = await Promise.all([
       this.driverService.validateDriverLicense(params.driverId),
       this.maintenanceService.isVehicleInMaintenance(params.vehicleId),
     ]);
 
-    // assertAssignableToTrip enforces status + license; catch and fold into result
+    let vehicle: AssignableVehicle;
+    try {
+      vehicle = await this.vehicleService.assertAssignableToTrip(params.vehicleId);
+    } catch (error) {
+      const message = this.exceptionMessage(
+        error,
+        'Selected vehicle is not available. Refresh and choose another.',
+      );
+      return { valid: false, errors: [message], warnings: [] };
+    }
+
     let driver: Driver;
     try {
       driver = await this.driverService.assertAssignableToTrip(params.driverId);
     } catch (error) {
-      const message =
-        error instanceof BadRequestException
-          ? String((error.getResponse() as { message?: string }).message ?? error.message)
-          : error instanceof Error
-            ? error.message
-            : 'Driver cannot be assigned';
+      const message = this.exceptionMessage(error, 'Driver cannot be assigned');
       return {
         valid: false,
         errors: [message],
@@ -137,5 +144,17 @@ export class TripValidators {
       driverHasActiveTrip: params.driverHasActiveTrip,
       vehicleInMaintenance,
     });
+  }
+
+  private exceptionMessage(error: unknown, fallback: string): string {
+    if (error instanceof NotFoundException || error instanceof BadRequestException) {
+      const response = error.getResponse();
+      if (typeof response === 'string') return response;
+      const message = (response as { message?: string | string[] }).message;
+      if (Array.isArray(message)) return message.join(', ');
+      if (typeof message === 'string') return message;
+    }
+    if (error instanceof Error) return error.message;
+    return fallback;
   }
 }

@@ -16,7 +16,7 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { VehicleStatus, VehicleType, FuelType } from '@transitops/shared-types';
-import { IsDateAfter, IsFutureDate } from '../validators/fleet.validators';
+import { IsDateAfter, IsFutureDate, IsPastOrToday } from '../validators/fleet.validators';
 
 export class VehicleDocumentDto {
   @ApiProperty({ example: 'Registration.pdf' })
@@ -102,6 +102,17 @@ export class CreateVehicleDto {
   @Max(200)
   seatingCapacity?: number;
 
+  @ApiProperty({
+    example: 500,
+    minimum: 1,
+    maximum: 500,
+    description: 'Maximum load capacity in kilograms (1–500)',
+  })
+  @IsNumber()
+  @Min(1, { message: 'maxCapacity must be at least 1 kg' })
+  @Max(500, { message: 'maxCapacity must not exceed 500 kg' })
+  maxCapacity!: number;
+
   @ApiProperty({ example: 84210, minimum: 0 })
   @IsNumber()
   @Min(0)
@@ -130,12 +141,16 @@ export class CreateVehicleDto {
   @ApiPropertyOptional({ example: '2026-06-12' })
   @IsOptional()
   @IsDateString()
+  @IsPastOrToday({ message: 'lastServiceDate must be today or a past date' })
   lastServiceDate?: string;
 
   @ApiPropertyOptional({ example: '2026-12-12' })
   @IsOptional()
   @IsDateString()
-  @IsDateAfter('lastServiceDate')
+  @IsFutureDate({ message: 'nextServiceDueDate must be greater than today' })
+  @IsDateAfter('lastServiceDate', {
+    message: 'nextServiceDueDate must be on or after lastServiceDate',
+  })
   nextServiceDueDate?: string;
 
   @ApiPropertyOptional({ example: 'Bengaluru' })

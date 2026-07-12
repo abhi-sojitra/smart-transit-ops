@@ -237,9 +237,12 @@ export class MaintenanceService {
     if (vehicle && vehicle.status !== VehicleStatus.RETIRED) {
       await this.vehicleRepository.update(vehicleId, {
         status: VehicleStatus.AVAILABLE,
-        lastService: completedDate,
+        lastServiceDate: completedDate,
         ...(existing.odometerReading !== undefined
           ? { mileage: existing.odometerReading }
+          : {}),
+        ...(existing.nextServiceDue !== undefined
+          ? { nextServiceDueDate: existing.nextServiceDue }
           : {}),
       });
     }
@@ -294,7 +297,7 @@ export class MaintenanceService {
     const vehicles = await this.vehicleRepository.findAll();
     return vehicles.map((v) => ({
       id: String(v._id),
-      vehicleNumber: v.vehicleId || v.vehicleNumber || '',
+      vehicleNumber: v.vehicleId || '',
       model: v.model,
       status: v.status,
       odometerReading: v.mileage,
@@ -500,7 +503,7 @@ export class MaintenanceService {
   private toDto(doc: MaintenanceDocument): MaintenanceDto {
     const vehicle = doc.vehicleId as unknown as VehicleDocument | Types.ObjectId;
     const vehiclePopulated =
-      vehicle && typeof vehicle === 'object' && ('vehicleId' in vehicle || 'vehicleNumber' in vehicle)
+      vehicle && typeof vehicle === 'object' && 'vehicleId' in vehicle
         ? (vehicle as VehicleDocument)
         : null;
 
@@ -518,7 +521,7 @@ export class MaintenanceService {
       vehicleId: vehiclePopulated
         ? String(vehiclePopulated._id)
         : String(doc.vehicleId),
-      vehicleNumber: vehiclePopulated?.vehicleId || vehiclePopulated?.vehicleNumber,
+      vehicleNumber: vehiclePopulated?.vehicleId,
       vehicleModel: vehiclePopulated?.model,
       maintenanceNumber: doc.maintenanceNumber ?? '—',
       maintenanceType: doc.maintenanceType,

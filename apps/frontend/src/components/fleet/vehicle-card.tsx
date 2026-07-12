@@ -2,11 +2,12 @@
 
 import Link from 'next/link';
 import { AlertTriangle, Eye, Gauge, Pencil, Trash2 } from 'lucide-react';
-import { motion, useReducedMotion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { VehicleStatusBadge } from '@/components/fleet/vehicle-status-badge';
 import { staggerItem } from '@/components/fleet/motion';
+import { useSafeReducedMotion } from '@/hooks/use-safe-reduced-motion';
 import { cn } from '@/utils/cn';
 import type { Vehicle } from '@/types/fleet';
 
@@ -17,7 +18,7 @@ interface VehicleCardProps {
 
 function formatDate(value?: string) {
   if (!value) return '—';
-  return new Date(value).toLocaleDateString(undefined, {
+  return new Date(value).toLocaleDateString('en-GB', {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
@@ -25,7 +26,7 @@ function formatDate(value?: string) {
 }
 
 export function VehicleCard({ vehicle, onDelete }: VehicleCardProps) {
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = useSafeReducedMotion();
   const insuranceWarning =
     vehicle.insuranceStatus === 'EXPIRED' || vehicle.insuranceStatus === 'EXPIRING';
 

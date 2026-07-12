@@ -21,6 +21,7 @@ import {
   mapVehicleToResponse,
 } from './vehicle.mapper';
 import { VehicleDocument } from '../schema/vehicle.schema';
+import { startOfToday, toDateOnly } from '../validators/fleet.validators';
 
 @Injectable()
 export class VehicleService {
@@ -29,6 +30,8 @@ export class VehicleService {
   async create(dto: CreateVehicleDto, user?: JwtPayload) {
     await this.assertUniqueFields(dto);
     this.assertComplianceNotExpiredOnCreate(dto);
+    this.assertServiceDates(dto);
+    this.assertMaxCapacity(dto.maxCapacity);
     this.assertAssignableStatus(dto.status, dto);
 
     const payload = this.toPersistence(dto, user?.sub, 'create');
@@ -105,6 +108,11 @@ export class VehicleService {
       isComplianceExpired(nextCompliance.fitnessCertificateExpiryDate)
     ) {
       throw new BadRequestException('Fitness certificate expiry must be greater than today');
+    }
+
+    this.assertServiceDates(dto, existing);
+    if (dto.maxCapacity !== undefined) {
+      this.assertMaxCapacity(dto.maxCapacity);
     }
 
     if (dto.status !== undefined) {
@@ -281,6 +289,45 @@ export class VehicleService {
     }
   }
 
+  private assertMaxCapacity(maxCapacity: number) {
+    if (maxCapacity < 1 || maxCapacity > 500) {
+      throw new BadRequestException('Maximum load capacity must be between 1 and 500 kg');
+    }
+  }
+
+  private assertServiceDates(
+    dto: { lastServiceDate?: string; nextServiceDueDate?: string },
+    existing?: { lastServiceDate?: Date | null; nextServiceDueDate?: Date | null },
+  ) {
+    const today = startOfToday().getTime();
+    const lastRaw = dto.lastServiceDate ?? (existing?.lastServiceDate
+      ? existing.lastServiceDate.toISOString().slice(0, 10)
+      : undefined);
+    const nextRaw = dto.nextServiceDueDate;
+
+    if (dto.lastServiceDate) {
+      const last = toDateOnly(dto.lastServiceDate);
+      if (!last || last.getTime() > today) {
+        throw new BadRequestException('Last service date must be today or a past date');
+      }
+    }
+
+    if (nextRaw) {
+      const next = toDateOnly(nextRaw);
+      if (!next || next.getTime() <= today) {
+        throw new BadRequestException('Next service due must be greater than today');
+      }
+      if (lastRaw) {
+        const last = toDateOnly(lastRaw);
+        if (last && next.getTime() < last.getTime()) {
+          throw new BadRequestException(
+            'Next service due must be on or after last service date',
+          );
+        }
+      }
+    }
+  }
+
   private assertAssignableStatus(
     status: VehicleStatus | undefined,
     dto: Pick<
@@ -311,13 +358,12 @@ export class VehicleService {
       if (existing.status === VehicleStatus.RETIRED) {
         throw new BadRequestException('Retired vehicle cannot become Available');
       }
-      if (existing.status === VehicleStatus.ON_TRIP) {
-        throw new BadRequestException('Vehicle on trip cannot become Available');
-      }
+      // ON_TRIP → AVAILABLE is allowed when a trip is completed or cancelled.
       if (
-        isComplianceExpired(compliance.registrationExpiryDate) ||
-        isComplianceExpired(compliance.insuranceExpiryDate) ||
-        isComplianceExpired(compliance.fitnessCertificateExpiryDate)
+        existing.status !== VehicleStatus.ON_TRIP &&
+        (isComplianceExpired(compliance.registrationExpiryDate) ||
+          isComplianceExpired(compliance.insuranceExpiryDate) ||
+          isComplianceExpired(compliance.fitnessCertificateExpiryDate))
       ) {
         throw new BadRequestException('Non-compliant vehicle cannot become Available');
       }
@@ -367,6 +413,7 @@ export class VehicleService {
     if (dto.status !== undefined) data.status = dto.status;
     if (dto.year !== undefined) data.year = dto.year;
     if (dto.seatingCapacity !== undefined) data.seatingCapacity = dto.seatingCapacity;
+    if (dto.maxCapacity !== undefined) data.maxCapacity = dto.maxCapacity;
     if (dto.mileage !== undefined) data.mileage = dto.mileage;
     if (dto.documents !== undefined) {
       data.documents = dto.documents.map((d) => ({

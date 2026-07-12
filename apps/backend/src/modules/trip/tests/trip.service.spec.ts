@@ -24,8 +24,9 @@ describe('TripService', () => {
 
   const vehicleService = {
     findById: jest.fn(),
-    updateStatus: jest.fn(),
-    findAvailable: jest.fn(),
+    updateVehicleStatus: jest.fn(),
+    getAvailableVehicles: jest.fn(),
+    assertAssignableToTrip: jest.fn(),
   };
 
   const driverService = {
@@ -90,9 +91,10 @@ describe('TripService', () => {
 
     await service.dispatchTrip('t1');
 
-    expect(vehicleService.updateStatus).toHaveBeenCalledWith(
+    expect(vehicleService.updateVehicleStatus).toHaveBeenCalledWith(
       '507f1f77bcf86cd799439011',
       VehicleStatus.ON_TRIP,
+      undefined,
     );
     expect(driverService.updateDriverStatus).toHaveBeenCalledWith(
       '507f1f77bcf86cd799439012',
@@ -117,9 +119,10 @@ describe('TripService', () => {
       actualRevenue: 900,
     });
 
-    expect(vehicleService.updateStatus).toHaveBeenCalledWith(
+    expect(vehicleService.updateVehicleStatus).toHaveBeenCalledWith(
       '507f1f77bcf86cd799439011',
       VehicleStatus.AVAILABLE,
+      undefined,
     );
     expect(driverService.updateDriverStatus).toHaveBeenCalledWith(
       '507f1f77bcf86cd799439012',

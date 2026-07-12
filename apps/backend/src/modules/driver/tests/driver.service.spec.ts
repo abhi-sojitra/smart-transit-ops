@@ -255,6 +255,37 @@ describe('DriverService', () => {
     expect(result.status).toBe(DriverStatus.AVAILABLE);
   });
 
+  it('allows ON_TRIP to Available even when license expired', async () => {
+    const expired = new Date();
+    expired.setFullYear(expired.getFullYear() - 1);
+    repository.findById.mockResolvedValue(
+      makeDriverDoc({ status: DriverStatus.ON_TRIP, licenseExpiryDate: expired }) as never,
+    );
+    repository.update.mockResolvedValue(
+      makeDriverDoc({ status: DriverStatus.AVAILABLE, licenseExpiryDate: expired }) as never,
+    );
+
+    const result = await service.updateDriverStatus(
+      '665f1a2b3c4d5e6f7a8b9c0d',
+      DriverStatus.AVAILABLE,
+    );
+
+    expect(result.status).toBe(DriverStatus.AVAILABLE);
+    expect(repository.update).toHaveBeenCalled();
+  });
+
+  it('rejects OFF_DUTY to Available when license expired', async () => {
+    const expired = new Date();
+    expired.setFullYear(expired.getFullYear() - 1);
+    repository.findById.mockResolvedValue(
+      makeDriverDoc({ status: DriverStatus.OFF_DUTY, licenseExpiryDate: expired }) as never,
+    );
+
+    await expect(
+      service.updateDriverStatus('665f1a2b3c4d5e6f7a8b9c0d', DriverStatus.AVAILABLE),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
   it('assertAssignableToTrip accepts available driver', async () => {
     repository.findById.mockResolvedValue(makeDriverDoc() as never);
     const result = await service.assertAssignableToTrip('665f1a2b3c4d5e6f7a8b9c0d');

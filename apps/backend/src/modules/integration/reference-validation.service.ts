@@ -22,7 +22,13 @@ export class ReferenceValidationService {
 
   async validateDriver(driverId?: string): Promise<void> {
     if (!driverId) return;
-    const driver = await this.driverModel.findOne({ employeeId: driverId.toUpperCase() }).exec();
+    const normalized = driverId.toUpperCase();
+    const driver = await this.driverModel
+      .findOne({
+        isDeleted: { $ne: true },
+        employeeCode: normalized,
+      })
+      .exec();
     if (!driver) {
       throw new Error(`Driver "${driverId}" not found`);
     }
@@ -30,7 +36,13 @@ export class ReferenceValidationService {
 
   async validateTrip(tripId?: string): Promise<void> {
     if (!tripId) return;
-    const trip = await this.tripModel.findOne({ tripId: tripId.toUpperCase() }).exec();
+    const normalized = tripId.toUpperCase();
+    const trip = await this.tripModel
+      .findOne({
+        isDeleted: { $ne: true },
+        tripNumber: normalized,
+      })
+      .exec();
     if (!trip) {
       throw new Error(`Trip "${tripId}" not found`);
     }

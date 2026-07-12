@@ -61,6 +61,8 @@ export function useAvailableVehicles() {
   return useQuery({
     queryKey: tripKeys.availableVehicles(),
     queryFn: () => tripService.availableVehicles(),
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 }
 
@@ -68,6 +70,8 @@ export function useAvailableDrivers() {
   return useQuery({
     queryKey: tripKeys.availableDrivers(),
     queryFn: () => tripService.availableDrivers(),
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 }
 

@@ -11,7 +11,8 @@ import {
   CalendarClock,
   type LucideIcon,
 } from 'lucide-react';
-import { motion, useReducedMotion } from 'framer-motion';
+import { motion } from 'framer-motion';
+import { useSafeReducedMotion } from '@/hooks/use-safe-reduced-motion';
 import { StatCard, type StatCardTone } from '@/components/charts/stat-card';
 import { staggerContainer, staggerItem } from '@/components/fleet/motion';
 import type { VehicleStatistics } from '@/types/fleet';
@@ -22,7 +23,7 @@ interface VehicleStatisticsProps {
 }
 
 export function VehicleStatisticsCards({ statistics, loading }: VehicleStatisticsProps) {
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = useSafeReducedMotion();
   const insuranceExpiring = statistics?.insuranceExpiring ?? 0;
   const serviceDueSoon = statistics?.serviceDueSoon ?? 0;
 
@@ -84,7 +85,9 @@ export function VehicleStatisticsCards({ statistics, loading }: VehicleStatistic
     },
     {
       title: 'Avg Mileage',
-      value: statistics ? statistics.averageMileage.toLocaleString() : '—',
+      value: statistics
+        ? Math.round(statistics.averageMileage).toLocaleString('en-US')
+        : '—',
       icon: Gauge,
       tone: 'neutral',
       hint: 'km',
