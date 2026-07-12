@@ -311,13 +311,12 @@ export class VehicleService {
       if (existing.status === VehicleStatus.RETIRED) {
         throw new BadRequestException('Retired vehicle cannot become Available');
       }
-      if (existing.status === VehicleStatus.ON_TRIP) {
-        throw new BadRequestException('Vehicle on trip cannot become Available');
-      }
+      // ON_TRIP → AVAILABLE is allowed when a trip is completed or cancelled.
       if (
-        isComplianceExpired(compliance.registrationExpiryDate) ||
-        isComplianceExpired(compliance.insuranceExpiryDate) ||
-        isComplianceExpired(compliance.fitnessCertificateExpiryDate)
+        existing.status !== VehicleStatus.ON_TRIP &&
+        (isComplianceExpired(compliance.registrationExpiryDate) ||
+          isComplianceExpired(compliance.insuranceExpiryDate) ||
+          isComplianceExpired(compliance.fitnessCertificateExpiryDate))
       ) {
         throw new BadRequestException('Non-compliant vehicle cannot become Available');
       }

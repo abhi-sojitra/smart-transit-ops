@@ -91,6 +91,7 @@ export const tripService = {
 
   async availableVehicles(): Promise<
     Array<{
+      id?: string;
       _id: string;
       vehicleId: string;
       make?: string;
@@ -101,14 +102,20 @@ export const tripService = {
   > {
     const { data } = await apiClient.get('/trips/available/vehicles');
     const list = unwrap(data) as Array<{
-      _id: string;
+      id?: string;
+      _id?: string;
       vehicleId: string;
       make?: string;
       model: string;
       maxCapacity: number;
       status: string;
     }>;
-    return Array.isArray(list) ? list : [];
+    if (!Array.isArray(list)) return [];
+    return list.map((vehicle) => ({
+      ...vehicle,
+      _id: String(vehicle.id ?? vehicle._id ?? ''),
+      id: String(vehicle.id ?? vehicle._id ?? ''),
+    }));
   },
 
   async availableDrivers() {

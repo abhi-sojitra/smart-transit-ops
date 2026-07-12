@@ -1,6 +1,8 @@
-/** Single source of truth — Vehicle Module schema. */
+/** Single source of truth — Fleet Module vehicle schema. */
 export {
   Vehicle,
   VehicleSchema,
+  VehicleDocumentFile,
+  VehicleDocumentFileSchema,
   type VehicleDocument,
-} from '../modules/vehicle/schema/vehicle.schema';
+} from '../modules/fleet/schema/vehicle.schema';

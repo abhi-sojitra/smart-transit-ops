@@ -91,11 +91,7 @@ async function runSeed() {
     );
   }
 
-  // Trip seed uses the legacy vehicle schema and creates trips.
-  await seedTripDispatcherData(mongoose);
-  await seedMaintenanceAndVehicles(mongoose);
-
-  // Re-register with fleet schema so demo vehicles include compliance fields.
+  // Fleet vehicles must exist before trips reference them.
   if (mongoose.models.Vehicle) {
     delete mongoose.models.Vehicle;
   }
@@ -106,10 +102,13 @@ async function runSeed() {
   for (const vehicle of demoVehicles) {
     await VehicleModel.findOneAndUpdate(
       { vehicleId: vehicle.vehicleId },
-      { $set: vehicle },
+      { $set: { ...vehicle, maxCapacity: 15000 + Math.floor(Math.random() * 10000) } },
       { upsert: true, new: true },
     );
   }
+
+  await seedMaintenanceAndVehicles(mongoose);
+  await seedTripDispatcherData(mongoose);
 
   console.log('Seed completed successfully.');
   await mongoose.disconnect();

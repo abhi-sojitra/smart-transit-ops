@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { Types } from 'mongoose';
 import { DriverStatus, RoleCode, TripStatus, VehicleStatus, type JwtPayload } from '@transitops/shared-types';
-import { VehicleService } from '../../vehicle/vehicle.service';
+import { VehicleService } from '../../fleet/service/vehicle.service';
 import { DriverService } from '../../driver/service/driver.service';
 import { TripRepository } from '../repository/trip.repository';
 import { TripValidators } from '../validators/trip.validators';
@@ -142,7 +142,7 @@ export class TripService {
     });
 
     await Promise.all([
-      this.vehicleService.updateStatus(vehicleId, VehicleStatus.ON_TRIP),
+      this.vehicleService.updateVehicleStatus(vehicleId, VehicleStatus.ON_TRIP, user),
       this.driverService.updateDriverStatus(driverId, DriverStatus.ON_TRIP, user),
     ]);
 
@@ -175,7 +175,7 @@ export class TripService {
     const driverId = this.refId(trip.driverId);
 
     await Promise.all([
-      this.vehicleService.updateStatus(vehicleId, VehicleStatus.AVAILABLE),
+      this.vehicleService.updateVehicleStatus(vehicleId, VehicleStatus.AVAILABLE, user),
       this.driverService.updateDriverStatus(driverId, DriverStatus.AVAILABLE, user),
     ]);
 
@@ -201,7 +201,7 @@ export class TripService {
 
     if (trip.status === TripStatus.DISPATCHED || trip.status === TripStatus.IN_PROGRESS) {
       await Promise.all([
-        this.vehicleService.updateStatus(vehicleId, VehicleStatus.AVAILABLE),
+        this.vehicleService.updateVehicleStatus(vehicleId, VehicleStatus.AVAILABLE, user),
         this.driverService.updateDriverStatus(driverId, DriverStatus.AVAILABLE, user),
       ]);
     }
@@ -241,11 +241,18 @@ export class TripService {
 
   async getAvailableVehicles() {
     const [vehicles, busyIds] = await Promise.all([
-      this.vehicleService.findAvailable(),
+      this.vehicleService.getAvailableVehicles(),
       this.trips.findBusyVehicleIds(),
     ]);
     const busy = new Set(busyIds);
-    return vehicles.filter((vehicle) => !busy.has(String(vehicle._id)));
+    return vehicles
+      .filter((vehicle) => !busy.has(String(vehicle.id ?? vehicle._id)))
+      .map((vehicle) => ({
+        ...vehicle,
+        id: String(vehicle.id ?? vehicle._id),
+        _id: String(vehicle._id ?? vehicle.id),
+        maxCapacity: vehicle.maxCapacity ?? vehicle.seatingCapacity ?? 0,
+      }));
   }
 
   async getAvailableDrivers() {

@@ -57,16 +57,22 @@ function toLocalInput(value?: string) {
   return local.toISOString().slice(0, 16);
 }
 
+function assetId(asset: { id?: string; _id?: string }): string {
+  return String(asset.id ?? asset._id ?? '');
+}
+
 export function TripForm({ defaultValues, submitLabel = 'Save trip', loading, onSubmit }: TripFormProps) {
   const {
     data: vehicles = [],
     isLoading: loadingVehicles,
     isError: vehiclesError,
+    isSuccess: vehiclesReady,
   } = useAvailableVehicles();
   const {
     data: drivers = [],
     isLoading: loadingDrivers,
     isError: driversError,
+    isSuccess: driversReady,
   } = useAvailableDrivers();
 
   const {
@@ -105,7 +111,26 @@ export function TripForm({ defaultValues, submitLabel = 'Save trip', loading, on
 
   const selectedVehicleId = watch('vehicleId');
   const selectedDriverId = watch('driverId');
-  const selectedVehicle = vehicles.find((v) => String(v._id) === selectedVehicleId);
+
+  useEffect(() => {
+    if (!vehiclesReady || loadingVehicles) return;
+    if (!selectedVehicleId) return;
+    const stillAvailable = vehicles.some((vehicle) => assetId(vehicle) === selectedVehicleId);
+    if (!stillAvailable) {
+      setValue('vehicleId', '', { shouldValidate: true, shouldDirty: true });
+    }
+  }, [vehicles, vehiclesReady, loadingVehicles, selectedVehicleId, setValue]);
+
+  useEffect(() => {
+    if (!driversReady || loadingDrivers) return;
+    if (!selectedDriverId) return;
+    const stillAvailable = drivers.some((driver) => assetId(driver) === selectedDriverId);
+    if (!stillAvailable) {
+      setValue('driverId', '', { shouldValidate: true, shouldDirty: true });
+    }
+  }, [drivers, driversReady, loadingDrivers, selectedDriverId, setValue]);
+
+  const selectedVehicle = vehicles.find((v) => assetId(v) === selectedVehicleId);
 
   return (
     <form
@@ -183,7 +208,8 @@ export function TripForm({ defaultValues, submitLabel = 'Save trip', loading, on
               </SelectTrigger>
               <SelectContent>
                 {vehicles.map((vehicle) => {
-                  const id = String(vehicle._id);
+                  const id = assetId(vehicle);
+                  if (!id) return null;
                   const name = [vehicle.make, vehicle.model].filter(Boolean).join(' ').trim();
                   return (
                     <SelectItem key={id} value={id}>
@@ -226,7 +252,7 @@ export function TripForm({ defaultValues, submitLabel = 'Save trip', loading, on
               </SelectTrigger>
               <SelectContent>
                 {drivers.map((driver) => {
-                  const value = String(driver.id ?? driver._id ?? '');
+                  const value = assetId(driver);
                   if (!value) return null;
                   return (
                     <SelectItem key={value} value={value}>
