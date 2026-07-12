@@ -869,6 +869,7 @@ export class DashboardRepository {
           destination: 1,
           status: 1,
           plannedStartDate: 1,
+          createdAt: 1,
           revenue: { $ifNull: ['$actualRevenue', '$estimatedRevenue'] },
           driverName: { $arrayElemAt: ['$driver.fullName', 0] },
           vehicleLabel: {
