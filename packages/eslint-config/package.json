@@ -1,0 +1,19 @@
+{
+  "name": "@transitops/eslint-config",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "echo \"No build\"",
+    "lint": "echo \"No lint\"",
+    "typecheck": "echo \"No typecheck\""
+  },
+  "main": "index.js",
+  "files": [
+    "index.js",
+    "next.js",
+    "nest.js"
+  ],
+  "peerDependencies": {
+    "eslint": "^9.0.0"
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "name": "transitops",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n frontend,backend -c orange,blue \"yarn workspace @transitops/frontend dev\" \"yarn workspace @transitops/backend start:dev\"",
+    "dev:frontend": "yarn workspace @transitops/frontend dev",
+    "dev:backend": "yarn workspace @transitops/backend start:dev",
+    "build": "yarn workspace @transitops/shared-types build && yarn workspace @transitops/backend build && yarn workspace @transitops/frontend build",
+    "lint": "yarn workspaces run lint",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "typecheck": "yarn workspaces run typecheck"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "prettier": "^3.5.3"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
