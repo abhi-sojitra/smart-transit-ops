@@ -254,7 +254,7 @@ export class TripService {
       this.trips.findBusyDriverIds(),
     ]);
     const busy = new Set(busyIds);
-    return drivers.filter((driver) => !busy.has(String(driver.id ?? driver._id)));
+    return drivers.filter((driver) => !busy.has(String(driver.id)));
   }
 
   async getTripStatistics(user?: JwtPayload) {
