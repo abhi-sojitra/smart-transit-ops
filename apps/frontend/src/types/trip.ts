@@ -8,8 +8,10 @@ import {
 export type { Trip, TripStatistics };
 
 export interface TripVehicleRef {
-  _id: string;
+  _id?: string;
+  id?: string;
   vehicleId?: string;
+  vehicleNumber?: string;
   registrationNumber?: string;
   make?: string;
   model?: string;
@@ -18,14 +20,18 @@ export interface TripVehicleRef {
 }
 
 export interface TripDriverRef {
-  _id: string;
+  _id?: string;
+  id?: string;
   firstName?: string;
   lastName?: string;
+  fullName?: string;
   name?: string;
+  employeeCode?: string;
   employeeId?: string;
   status?: string;
   licenseStatus?: string;
   licenseExpiry?: string;
+  licenseExpiryDate?: string;
 }
 
 export interface TripRecord extends Omit<Trip, 'id' | 'vehicleId' | 'driverId' | 'createdAt' | 'updatedAt'> {

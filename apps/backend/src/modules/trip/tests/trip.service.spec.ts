@@ -12,6 +12,8 @@ describe('TripService', () => {
     nextTripNumber: jest.fn(),
     hasActiveTripForVehicle: jest.fn(),
     hasActiveTripForDriver: jest.fn(),
+    findBusyVehicleIds: jest.fn(),
+    findBusyDriverIds: jest.fn(),
     getStatistics: jest.fn(),
   };
 

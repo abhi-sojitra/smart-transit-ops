@@ -24,11 +24,23 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const exceptionResponse =
       exception instanceof HttpException ? exception.getResponse() : 'Internal server error';
 
-    const message =
+    const responseBody =
       typeof exceptionResponse === 'string'
-        ? exceptionResponse
-        : ((exceptionResponse as { message?: string | string[] }).message ??
-          'Internal server error');
+        ? { message: exceptionResponse }
+        : (exceptionResponse as {
+            message?: string | string[];
+            errors?: string[];
+            warnings?: string[];
+          });
+
+    const rawMessage = responseBody.message ?? 'Internal server error';
+    const errors = Array.isArray(responseBody.errors) ? responseBody.errors : undefined;
+    const warnings = Array.isArray(responseBody.warnings) ? responseBody.warnings : undefined;
+
+    let message = Array.isArray(rawMessage) ? rawMessage.join(', ') : rawMessage;
+    if (errors?.length && message === 'Trip validation failed') {
+      message = `${message}: ${errors.join('; ')}`;
+    }
 
     this.logger.error(
       exception instanceof Error ? exception.message : 'Unknown error',
@@ -37,8 +49,10 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     response.status(status).json({
       success: false,
-      message: Array.isArray(message) ? message.join(', ') : message,
+      message,
       data: null,
+      errors,
+      warnings,
       meta: {
         statusCode: status,
         timestamp: new Date().toISOString(),
