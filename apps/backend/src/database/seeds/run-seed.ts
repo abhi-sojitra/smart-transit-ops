@@ -1,0 +1,63 @@
+import mongoose from 'mongoose';
+import * as bcrypt from 'bcryptjs';
+import { config as loadEnv } from 'dotenv';
+import { resolve } from 'path';
+import { RoleCode, UserAccountStatus } from '@transitops/shared-types';
+import { RoleSchema } from '../../schemas/role.schema';
+import { UserSchema } from '../../schemas/user.schema';
+import { DEFAULT_ROLES } from './roles.seed';
+
+loadEnv({ path: resolve(__dirname, '../../../.env') });
+
+async function runSeed() {
+  const uri = process.env.MONGODB_URI;
+  if (!uri) {
+    throw new Error('MONGODB_URI is required');
+  }
+
+  await mongoose.connect(uri);
+  const RoleModel = mongoose.model('Role', RoleSchema);
+  const UserModel = mongoose.model('User', UserSchema);
+
+  console.log('Seeding roles...');
+  const roleIds: Record<string, mongoose.Types.ObjectId> = {};
+  for (const role of DEFAULT_ROLES) {
+    const doc = await RoleModel.findOneAndUpdate(
+      { code: role.code },
+      { $set: role },
+      { upsert: true, new: true },
+    );
+    roleIds[role.code] = doc._id as mongoose.Types.ObjectId;
+  }
+
+  const email = process.env.SEED_ADMIN_EMAIL ?? 'admin@transitops.com';
+  const password = process.env.SEED_ADMIN_PASSWORD ?? 'Admin@12345';
+  const firstName = process.env.SEED_ADMIN_FIRST_NAME ?? 'System';
+  const lastName = process.env.SEED_ADMIN_LAST_NAME ?? 'Admin';
+
+  console.log(`Seeding admin user (${email})...`);
+  const passwordHash = await bcrypt.hash(password, 12);
+  await UserModel.findOneAndUpdate(
+    { email: email.toLowerCase() },
+    {
+      $set: {
+        email: email.toLowerCase(),
+        passwordHash,
+        firstName,
+        lastName,
+        roles: [roleIds[RoleCode.SUPER_ADMIN]],
+        status: UserAccountStatus.ACTIVE,
+      },
+    },
+    { upsert: true, new: true },
+  );
+
+  console.log('Seed completed successfully.');
+  await mongoose.disconnect();
+}
+
+runSeed().catch(async (err) => {
+  console.error('Seed failed:', err);
+  await mongoose.disconnect();
+  process.exit(1);
+});

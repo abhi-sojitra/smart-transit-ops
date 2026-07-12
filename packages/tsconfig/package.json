@@ -1,0 +1,16 @@
+{
+  "name": "@transitops/tsconfig",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "echo \"No build\"",
+    "lint": "echo \"No lint\"",
+    "typecheck": "echo \"No typecheck\""
+  },
+  "files": [
+    "base.json",
+    "nextjs.json",
+    "nestjs.json",
+    "library.json"
+  ]
+}
