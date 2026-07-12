@@ -93,6 +93,7 @@ See [`apps/backend/src/modules/trip/README.md`](apps/backend/src/modules/trip/RE
 - **Trip Dispatcher** is fully wired (API + UI) and integrates with Vehicle, Driver, and Maintenance services.
 - **Driver Module** is fully implemented.
 - **Maintenance Module** is fully implemented (CRUD, workflow, vehicle status automation).
+- **Dashboard & Analytics** is fully implemented (overview, charts, alerts, leaderboards, CSV/PDF reports). See [`apps/backend/src/modules/dashboard/README.md`](apps/backend/src/modules/dashboard/README.md).
 - If fuel/expense APIs return **404**, restart the backend so it loads the latest modules:
   ```bash
   # stop any old process on port 4000, then:
