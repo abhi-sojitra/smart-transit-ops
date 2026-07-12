@@ -20,38 +20,134 @@ export type NavItem = {
   title: string;
   href: string;
   icon: LucideIcon;
+  /** Any of these permission codes grants access (VIEW-level). */
+  permissions?: string[];
   children?: NavItem[];
 };
 
 export const NAV_ITEMS: NavItem[] = [
-  { title: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { title: 'Fleet', href: '/fleet', icon: Truck },
-  { title: 'Drivers', href: '/drivers', icon: Users },
-  { title: 'Trips & Dispatch', href: '/trips', icon: Route },
-  { title: 'Maintenance', href: '/maintenance', icon: Wrench },
+  {
+    title: 'Dashboard',
+    href: '/dashboard',
+    icon: LayoutDashboard,
+    permissions: ['DASHBOARD:VIEW'],
+  },
+  {
+    title: 'Fleet',
+    href: '/fleet',
+    icon: Truck,
+    permissions: ['VEHICLE:VIEW'],
+  },
+  {
+    title: 'Drivers',
+    href: '/drivers',
+    icon: Users,
+    permissions: ['DRIVER:VIEW'],
+  },
+  {
+    title: 'Trips & Dispatch',
+    href: '/trips',
+    icon: Route,
+    permissions: ['TRIP:VIEW'],
+  },
+  {
+    title: 'Maintenance',
+    href: '/maintenance',
+    icon: Wrench,
+    permissions: ['MAINTENANCE:VIEW'],
+  },
   {
     title: 'Fuel & Expense',
     href: '/fuel-expenses',
     icon: Fuel,
+    permissions: ['FUEL:VIEW', 'EXPENSE:VIEW'],
     children: [
-      { title: 'Fuel Logs', href: '/fuel', icon: Fuel },
-      { title: 'Expenses', href: '/expenses', icon: Receipt },
+      { title: 'Fuel Logs', href: '/fuel', icon: Fuel, permissions: ['FUEL:VIEW'] },
+      {
+        title: 'Expenses',
+        href: '/expenses',
+        icon: Receipt,
+        permissions: ['EXPENSE:VIEW'],
+      },
     ],
   },
-  { title: 'Analytics', href: '/analytics', icon: BarChart3 },
-  { title: 'Reports', href: '/reports', icon: FileText },
+  {
+    title: 'Analytics',
+    href: '/analytics',
+    icon: BarChart3,
+    permissions: ['DASHBOARD:VIEW', 'REPORTS:VIEW'],
+  },
+  {
+    title: 'Reports',
+    href: '/reports',
+    icon: FileText,
+    permissions: ['REPORTS:VIEW'],
+  },
   {
     title: 'Settings',
     href: '/settings',
     icon: Settings,
+    permissions: ['SETTINGS:VIEW', 'USERS:VIEW', 'ROLES:VIEW', 'PERMISSIONS:VIEW'],
     children: [
-      { title: 'Overview', href: '/settings', icon: Settings },
-      { title: 'Users', href: '/settings/users', icon: Users },
-      { title: 'Roles', href: '/settings/roles', icon: Shield },
-      { title: 'Company', href: '/settings/company', icon: Building2 },
+      {
+        title: 'Overview',
+        href: '/settings',
+        icon: Settings,
+        permissions: ['SETTINGS:VIEW'],
+      },
+      {
+        title: 'Users',
+        href: '/settings/users',
+        icon: Users,
+        permissions: ['USERS:VIEW'],
+      },
+      {
+        title: 'Roles',
+        href: '/settings/roles',
+        icon: Shield,
+        permissions: ['ROLES:VIEW'],
+      },
+      {
+        title: 'Company',
+        href: '/settings/company',
+        icon: Building2,
+        permissions: ['SETTINGS:VIEW'],
+      },
     ],
   },
 ];
+
+export function hasAnyPermission(
+  granted: string[] | undefined,
+  required?: string[],
+): boolean {
+  if (!required?.length) return true;
+  if (!granted?.length) return false;
+  if (granted.includes('*')) return true;
+  return required.some((code) => granted.includes(code));
+}
+
+/** Keep only nav items the user is allowed to see. */
+export function filterNavByPermissions(
+  items: NavItem[],
+  granted: string[] | undefined,
+): NavItem[] {
+  return items
+    .map((item) => {
+      const children = item.children
+        ? filterNavByPermissions(item.children, granted)
+        : undefined;
+      const selfAllowed = hasAnyPermission(granted, item.permissions);
+      if (children?.length) {
+        return { ...item, children };
+      }
+      if (selfAllowed) {
+        return children ? { ...item, children } : item;
+      }
+      return null;
+    })
+    .filter((item): item is NavItem => item !== null);
+}
 
 export function isNavActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);

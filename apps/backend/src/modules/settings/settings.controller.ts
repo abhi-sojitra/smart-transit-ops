@@ -1,9 +1,9 @@
 import { Body, Controller, Get, Patch, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { RoleCode, type JwtPayload } from '@transitops/shared-types';
+import { type JwtPayload } from '@transitops/shared-types';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { JwtAuthGuard, RolesGuard } from '../../common/guards/auth.guards';
+import { RequirePermissions } from '../../common/decorators/permissions.decorator';
+import { JwtAuthGuard, PermissionsGuard, RolesGuard } from '../../common/guards/auth.guards';
 import {
   ChangePasswordDto,
   UpdateAppearanceSettingsDto,
@@ -12,25 +12,22 @@ import {
 } from './dto/settings.dto';
 import { SettingsService } from './settings.service';
 
-const ADMIN_ROLES = [RoleCode.SUPER_ADMIN, RoleCode.ADMIN] as const;
-const ALL_AUTH = Object.values(RoleCode);
-
 @ApiTags('Settings')
 @ApiBearerAuth()
 @Controller('settings')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard, RolesGuard)
 export class SettingsController {
   constructor(private readonly settingsService: SettingsService) {}
 
   @Get('company')
-  @Roles(...ADMIN_ROLES)
+  @RequirePermissions('SETTINGS:VIEW')
   @ApiOperation({ summary: 'Get company settings' })
   getCompany() {
     return this.settingsService.getCompanySettings();
   }
 
   @Patch('company')
-  @Roles(...ADMIN_ROLES)
+  @RequirePermissions('SETTINGS:UPDATE')
   @ApiOperation({ summary: 'Update company settings' })
   updateCompany(
     @Body() dto: UpdateCompanySettingsDto,
@@ -40,14 +37,14 @@ export class SettingsController {
   }
 
   @Get('appearance')
-  @Roles(...ALL_AUTH)
+  @RequirePermissions('PROFILE:VIEW')
   @ApiOperation({ summary: 'Get appearance preferences' })
   getAppearance() {
     return this.settingsService.getAppearanceSettings();
   }
 
   @Patch('appearance')
-  @Roles(...ALL_AUTH)
+  @RequirePermissions('PROFILE:UPDATE')
   @ApiOperation({ summary: 'Update appearance preferences' })
   updateAppearance(
     @Body() dto: UpdateAppearanceSettingsDto,
@@ -57,7 +54,7 @@ export class SettingsController {
   }
 
   @Get('statistics')
-  @Roles(...ADMIN_ROLES)
+  @RequirePermissions('SETTINGS:VIEW')
   @ApiOperation({ summary: 'Admin dashboard statistics' })
   getStatistics() {
     return this.settingsService.getSystemStatistics();
@@ -67,26 +64,26 @@ export class SettingsController {
 @ApiTags('Profile')
 @ApiBearerAuth()
 @Controller('profile')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard, RolesGuard)
 export class ProfileController {
   constructor(private readonly settingsService: SettingsService) {}
 
   @Get()
-  @Roles(...ALL_AUTH)
+  @RequirePermissions('PROFILE:VIEW')
   @ApiOperation({ summary: 'Get current user profile' })
   getProfile(@CurrentUser() user: JwtPayload) {
     return this.settingsService.getProfile(user.sub);
   }
 
   @Patch()
-  @Roles(...ALL_AUTH)
+  @RequirePermissions('PROFILE:UPDATE')
   @ApiOperation({ summary: 'Update current user profile' })
   updateProfile(@Body() dto: UpdateProfileDto, @CurrentUser() user: JwtPayload) {
     return this.settingsService.updateProfile(user.sub, dto, user);
   }
 
   @Post('password')
-  @Roles(...ALL_AUTH)
+  @RequirePermissions('PROFILE:UPDATE')
   @ApiOperation({ summary: 'Change password' })
   changePassword(@Body() dto: ChangePasswordDto, @CurrentUser() user: JwtPayload) {
     return this.settingsService.changePassword(user.sub, dto, user);
@@ -96,19 +93,19 @@ export class ProfileController {
 @ApiTags('Security')
 @ApiBearerAuth()
 @Controller('security')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard, RolesGuard)
 export class SecurityController {
   constructor(private readonly settingsService: SettingsService) {}
 
   @Get()
-  @Roles(...ADMIN_ROLES)
+  @RequirePermissions('SETTINGS:VIEW')
   @ApiOperation({ summary: 'Get security settings' })
   getSecurity() {
     return this.settingsService.getSecuritySettings();
   }
 
   @Patch()
-  @Roles(...ADMIN_ROLES)
+  @RequirePermissions('SETTINGS:UPDATE')
   @ApiOperation({ summary: 'Update security settings' })
   updateSecurity(
     @Body() dto: import('./dto/settings.dto').UpdateSecuritySettingsDto,
