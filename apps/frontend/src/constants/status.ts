@@ -24,4 +24,10 @@ export const statusColorMap: Record<string, string> = {
   MEDIUM: 'bg-orange-500/15 text-orange-500 border-orange-500/20',
   HIGH: 'bg-red-500/15 text-red-500 border-red-500/20',
   CRITICAL: 'bg-red-500/15 text-red-500 border-red-500/20',
+  DIESEL: 'bg-amber-500/15 text-amber-700 border-amber-500/20',
+  PETROL: 'bg-orange-500/15 text-orange-600 border-orange-500/20',
+  CNG: 'bg-sky-500/15 text-sky-600 border-sky-500/20',
+  ELECTRIC: 'bg-emerald-500/15 text-emerald-600 border-emerald-500/20',
+  HYBRID: 'bg-violet-500/15 text-violet-600 border-violet-500/20',
+  OTHER: 'bg-slate-500/15 text-slate-500 border-slate-500/20',
 };

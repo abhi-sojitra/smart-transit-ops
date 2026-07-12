@@ -1,5 +1,6 @@
 'use client';
 
+import * as React from 'react';
 import { useEffect, useMemo, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -17,7 +18,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useAvailableDrivers, useAvailableVehicles } from '@/hooks/use-trips';
+import { VehicleSelect } from '@/components/fleet/vehicle-select';
+import { useAvailableDrivers } from '@/hooks/use-trips';
 import type { CreateTripInput } from '@/types/trip';
 
 const tripFormBaseSchema = z.object({
@@ -37,7 +39,7 @@ const tripFormBaseSchema = z.object({
 
 export type TripFormValues = z.infer<typeof tripFormBaseSchema>;
 
-function createTripSchema(getCapacity: (vehicleId: string) => number | undefined) {
+function createTripSchema(getCapacity: () => number | null | undefined) {
   return tripFormBaseSchema
     .refine((values) => new Date(values.plannedEndDate) >= new Date(values.plannedStartDate), {
       message: 'End date must be after start date',
@@ -45,8 +47,8 @@ function createTripSchema(getCapacity: (vehicleId: string) => number | undefined
     })
     .superRefine((values, ctx) => {
       if (!values.vehicleId) return;
-      const capacity = getCapacity(values.vehicleId);
-      if (capacity === undefined) return;
+      const capacity = getCapacity();
+      if (capacity === null || capacity === undefined) return;
       if (capacity <= 0) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -86,30 +88,17 @@ function assetId(asset: { id?: string; _id?: string }): string {
 
 export function TripForm({ defaultValues, submitLabel = 'Save trip', loading, onSubmit }: TripFormProps) {
   const {
-    data: vehicles = [],
-    isLoading: loadingVehicles,
-    isError: vehiclesError,
-    isSuccess: vehiclesReady,
-  } = useAvailableVehicles();
-  const {
     data: drivers = [],
     isLoading: loadingDrivers,
     isError: driversError,
     isSuccess: driversReady,
   } = useAvailableDrivers();
 
-  const vehiclesRef = useRef(vehicles);
-  vehiclesRef.current = vehicles;
+  const [selectedVehicleCapacity, setSelectedVehicleCapacity] = React.useState<number | null>(null);
+  const capacityRef = useRef(selectedVehicleCapacity);
+  capacityRef.current = selectedVehicleCapacity;
 
-  const schema = useMemo(
-    () =>
-      createTripSchema((vehicleId) => {
-        const vehicle = vehiclesRef.current.find((item) => assetId(item) === vehicleId);
-        if (!vehicle) return undefined;
-        return Number(vehicle.maxCapacity) || 0;
-      }),
-    [],
-  );
+  const schema = useMemo(() => createTripSchema(() => capacityRef.current), []);
 
   const {
     register,
@@ -147,15 +136,9 @@ export function TripForm({ defaultValues, submitLabel = 'Save trip', loading, on
 
   const selectedVehicleId = watch('vehicleId');
   const selectedDriverId = watch('driverId');
-
-  useEffect(() => {
-    if (!vehiclesReady || loadingVehicles) return;
-    if (!selectedVehicleId) return;
-    const stillAvailable = vehicles.some((vehicle) => assetId(vehicle) === selectedVehicleId);
-    if (!stillAvailable) {
-      setValue('vehicleId', '', { shouldValidate: true, shouldDirty: true });
-    }
-  }, [vehicles, vehiclesReady, loadingVehicles, selectedVehicleId, setValue]);
+  const plannedStartDate = watch('plannedStartDate');
+  const minStartDateTime = toLocalInput(new Date().toISOString());
+  const minEndDateTime = plannedStartDate || minStartDateTime;
 
   useEffect(() => {
     if (!driversReady || loadingDrivers) return;
@@ -165,8 +148,6 @@ export function TripForm({ defaultValues, submitLabel = 'Save trip', loading, on
       setValue('driverId', '', { shouldValidate: true, shouldDirty: true });
     }
   }, [drivers, driversReady, loadingDrivers, selectedDriverId, setValue]);
-
-  const selectedVehicle = vehicles.find((v) => assetId(v) === selectedVehicleId);
 
   return (
     <form
@@ -197,10 +178,20 @@ export function TripForm({ defaultValues, submitLabel = 'Save trip', loading, on
             htmlFor="plannedStartDate"
             error={errors.plannedStartDate?.message}
           >
-            <Input id="plannedStartDate" type="datetime-local" {...register('plannedStartDate')} />
+            <Input
+              id="plannedStartDate"
+              type="datetime-local"
+              min={minStartDateTime}
+              {...register('plannedStartDate')}
+            />
           </FormField>
           <FormField label="Planned end *" htmlFor="plannedEndDate" error={errors.plannedEndDate?.message}>
-            <Input id="plannedEndDate" type="datetime-local" {...register('plannedEndDate')} />
+            <Input
+              id="plannedEndDate"
+              type="datetime-local"
+              min={minEndDateTime}
+              {...register('plannedEndDate')}
+            />
           </FormField>
         </CardContent>
       </Card>
@@ -211,50 +202,21 @@ export function TripForm({ defaultValues, submitLabel = 'Save trip', loading, on
           <CardDescription>Only available assets can be assigned.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
-          <FormField
-            label="Vehicle *"
-            htmlFor="vehicleId"
-            error={
-              errors.vehicleId?.message ??
-              (vehiclesError ? 'Failed to load vehicles' : undefined)
-            }
-            description={
-              !loadingVehicles && !vehiclesError && vehicles.length === 0
-                ? 'No free vehicles right now. Cancel or complete an active trip first.'
-                : undefined
-            }
-          >
-            <Select
-              value={selectedVehicleId || undefined}
-              onValueChange={(value) =>
+          <FormField label="Vehicle *" htmlFor="vehicleId" error={errors.vehicleId?.message}>
+            <VehicleSelect
+              id="vehicleId"
+              source="available"
+              valueKey="id"
+              value={selectedVehicleId}
+              placeholder="Select available vehicle"
+              onChange={(value) =>
                 setValue('vehicleId', value, { shouldValidate: true, shouldDirty: true })
               }
-              disabled={loadingVehicles || vehiclesError || vehicles.length === 0}
-            >
-              <SelectTrigger id="vehicleId">
-                <SelectValue
-                  placeholder={
-                    loadingVehicles
-                      ? 'Loading vehicles…'
-                      : vehicles.length === 0
-                        ? 'No available vehicles'
-                        : 'Select available vehicle'
-                  }
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {vehicles.map((vehicle) => {
-                  const id = assetId(vehicle);
-                  if (!id) return null;
-                  const name = [vehicle.make, vehicle.model].filter(Boolean).join(' ').trim();
-                  return (
-                    <SelectItem key={id} value={id}>
-                      {name || vehicle.model || vehicle.vehicleId} · cap {vehicle.maxCapacity}
-                    </SelectItem>
-                  );
-                })}
-              </SelectContent>
-            </Select>
+              onVehicleSelect={(vehicle) => {
+                setSelectedVehicleCapacity(vehicle?.maxCapacity ?? null);
+              }}
+              aria-invalid={Boolean(errors.vehicleId)}
+            />
           </FormField>
           <FormField
             label="Driver *"
@@ -300,9 +262,9 @@ export function TripForm({ defaultValues, submitLabel = 'Save trip', loading, on
               </SelectContent>
             </Select>
           </FormField>
-          {selectedVehicle ? (
+          {selectedVehicleCapacity != null ? (
             <p className="text-xs text-muted-foreground md:col-span-2">
-              Selected capacity: {selectedVehicle.maxCapacity}. Cargo weight cannot exceed this value.
+              Selected capacity: {selectedVehicleCapacity}. Cargo weight cannot exceed this value.
             </p>
           ) : null}
         </CardContent>

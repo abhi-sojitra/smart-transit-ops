@@ -1,19 +1,30 @@
 'use client';
 
 import Link from 'next/link';
-import { use } from 'react';
-import { Pencil } from 'lucide-react';
+import { use, useState } from 'react';
+import { Pencil, Trash2 } from 'lucide-react';
+import { AxiosError } from 'axios';
+import { motion, useReducedMotion } from 'framer-motion';
+import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/layout/page-header';
 import { Breadcrumb } from '@/components/layout/breadcrumb';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { ExpenseStatusBadge } from '@/components/expenses';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useExpenseDetail } from '@/hooks/use-expenses';
+import { DeleteExpenseDialog } from '@/components/expenses';
+import { pageFade, staggerContainer, staggerItem } from '@/components/drivers/motion';
+import { useDeleteExpense, useExpenseDetail } from '@/hooks/use-expenses';
+import { formatDisplayDate } from '@/utils/date';
 
 export default function ExpenseDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const router = useRouter();
+  const reduceMotion = useReducedMotion();
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const { data: expense, isLoading, isError } = useExpenseDetail(id);
+  const deleteMutation = useDeleteExpense();
 
   if (isLoading) {
     return (
@@ -28,8 +39,27 @@ export default function ExpenseDetailPage({ params }: { params: Promise<{ id: st
     return <p className="text-sm text-red-500">Expense not found.</p>;
   }
 
+  const handleDelete = async () => {
+    try {
+      await deleteMutation.mutateAsync(id);
+      toast.success('Expense deleted');
+      router.push('/expenses');
+    } catch (error) {
+      const message =
+        error instanceof AxiosError
+          ? ((error.response?.data as { message?: string })?.message ?? error.message)
+          : 'Failed to delete expense';
+      toast.error(message);
+    }
+  };
+
   return (
-    <div className="space-y-6">
+    <motion.div
+      className="space-y-6"
+      variants={pageFade}
+      initial={reduceMotion ? false : 'hidden'}
+      animate="show"
+    >
       <div>
         <Breadcrumb
           items={[
@@ -40,35 +70,72 @@ export default function ExpenseDetailPage({ params }: { params: Promise<{ id: st
         />
         <PageHeader
           title={expense.title}
-          description={`${expense.vehicleId} · ${expense.expenseDate}`}
+          description={`${expense.vehicleId} · ${formatDisplayDate(expense.expenseDate)}`}
           actions={
-            <Button asChild variant="outline">
-              <Link href={`/expenses/${id}/edit`}>
-                <Pencil className="mr-2 h-4 w-4" />
-                Edit
-              </Link>
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button asChild variant="outline">
+                <Link href={`/expenses/${id}/edit`}>
+                  <Pencil className="h-4 w-4" />
+                  Edit
+                </Link>
+              </Button>
+              <Button variant="danger" onClick={() => setDeleteOpen(true)}>
+                <Trash2 className="h-4 w-4" />
+                Delete
+              </Button>
+            </div>
           }
         />
       </div>
 
-      <Card className="max-w-2xl">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-base">Expense Details</CardTitle>
-          <Badge status={expense.status}>{expense.status}</Badge>
-        </CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-2">
-          <Detail label="Vehicle" value={expense.vehicleId} />
-          <Detail label="Trip" value={expense.tripId ?? '—'} />
-          <Detail label="Driver" value={expense.driverId ?? '—'} />
-          <Detail label="Type" value={expense.expenseType.replaceAll('_', ' ')} />
-          <Detail label="Amount" value={`$${expense.amount.toFixed(2)}`} />
-          <Detail label="Date" value={expense.expenseDate} />
-          <Detail label="Description" value={expense.description ?? '—'} className="sm:col-span-2" />
-          <Detail label="Notes" value={expense.notes ?? '—'} className="sm:col-span-2" />
-        </CardContent>
-      </Card>
-    </div>
+      <motion.div
+        className="grid gap-4 md:grid-cols-2"
+        variants={staggerContainer}
+        initial={reduceMotion ? false : 'hidden'}
+        animate="show"
+      >
+        <motion.div variants={staggerItem}>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-base">Assignment</CardTitle>
+              <ExpenseStatusBadge status={expense.status} />
+            </CardHeader>
+            <CardContent className="grid gap-4 sm:grid-cols-2">
+              <Detail label="Vehicle" value={expense.vehicleId} />
+              <Detail label="Trip" value={expense.tripId ?? '—'} />
+              <Detail label="Driver" value={expense.driverId ?? '—'} />
+              <Detail label="Date" value={formatDisplayDate(expense.expenseDate)} />
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        <motion.div variants={staggerItem}>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Expense</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-4 sm:grid-cols-2">
+              <Detail label="Type" value={expense.expenseType.replaceAll('_', ' ')} />
+              <Detail label="Amount" value={`$${expense.amount.toFixed(2)}`} />
+              {expense.description ? (
+                <Detail label="Description" value={expense.description} className="sm:col-span-2" />
+              ) : null}
+              {expense.notes ? (
+                <Detail label="Notes" value={expense.notes} className="sm:col-span-2" />
+              ) : null}
+            </CardContent>
+          </Card>
+        </motion.div>
+      </motion.div>
+
+      <DeleteExpenseDialog
+        expense={expense}
+        open={deleteOpen}
+        loading={deleteMutation.isPending}
+        onOpenChange={setDeleteOpen}
+        onConfirm={handleDelete}
+      />
+    </motion.div>
   );
 }
 

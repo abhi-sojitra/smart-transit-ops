@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Search, X } from 'lucide-react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { Input } from '@/components/ui/input';
+import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -150,17 +151,14 @@ export function TripFilters({ value, onChange, onReset }: TripFiltersProps) {
           </SelectContent>
         </Select>
 
-        <Input
-          type="date"
-          value={value.startDate}
-          onChange={(e) => onChange({ ...value, startDate: e.target.value })}
-          aria-label="Start date from"
-        />
-        <Input
-          type="date"
-          value={value.endDate}
-          onChange={(e) => onChange({ ...value, endDate: e.target.value })}
-          aria-label="End date to"
+        <DateRangePicker
+          className="md:col-span-2"
+          value={{ from: value.startDate, to: value.endDate }}
+          onChange={({ from, to }) =>
+            onChange({ ...value, startDate: from ?? '', endDate: to ?? '' })
+          }
+          placeholder="Filter by trip dates"
+          numberOfMonths={1}
         />
 
         <Select

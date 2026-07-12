@@ -2,42 +2,26 @@
 
 import { useRouter } from 'next/navigation';
 import { use } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { PageHeader } from '@/components/layout/page-header';
 import { Breadcrumb } from '@/components/layout/breadcrumb';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { FuelForm } from '@/components/fuel/FuelForm';
+import { FuelForm } from '@/components/fuel';
+import { pageFade } from '@/components/drivers/motion';
 import { useFuelDetail, useUpdateFuel } from '@/hooks/use-fuel';
 import type { FuelFormValues } from '@/types/fuel-expense';
-import { notify } from '@/utils/notify';
+import { toast } from 'sonner';
+import { AxiosError } from 'axios';
 
 export default function EditFuelPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
+  const reduceMotion = useReducedMotion();
   const { data: fuel, isLoading } = useFuelDetail(id);
-  const updateFuel = useUpdateFuel();
-
-  const handleSubmit = async (values: FuelFormValues) => {
-    try {
-      await updateFuel.mutateAsync({
-        id,
-        payload: {
-          ...values,
-          tripId: values.tripId || undefined,
-          driverId: values.driverId || undefined,
-          receiptImage: values.receiptImage || undefined,
-          notes: values.notes || undefined,
-        },
-      });
-      notify.fuelUpdated();
-      router.push(`/fuel/${id}`);
-    } catch (err) {
-      notify.error(err instanceof Error ? err.message : 'Failed to update fuel log');
-    }
-  };
+  const updateMutation = useUpdateFuel();
 
   if (isLoading) {
-    return <Skeleton className="h-96 w-full max-w-3xl rounded-xl" />;
+    return <Skeleton className="h-96 w-full rounded-xl" />;
   }
 
   if (!fuel) {
@@ -45,7 +29,12 @@ export default function EditFuelPage({ params }: { params: Promise<{ id: string 
   }
 
   return (
-    <div className="space-y-6">
+    <motion.div
+      className="space-y-6"
+      variants={pageFade}
+      initial={reduceMotion ? false : 'hidden'}
+      animate="show"
+    >
       <div>
         <Breadcrumb
           items={[
@@ -58,31 +47,46 @@ export default function EditFuelPage({ params }: { params: Promise<{ id: string 
         <PageHeader title="Edit Fuel Log" description={`Updating ${fuel.fuelStation}`} />
       </div>
 
-      <Card className="max-w-3xl">
-        <CardHeader>
-          <CardTitle className="text-base">Fuel Details</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <FuelForm
-            defaultValues={{
-              vehicleId: fuel.vehicleId,
-              tripId: fuel.tripId,
-              driverId: fuel.driverId,
-              fuelStation: fuel.fuelStation,
-              fuelType: fuel.fuelType,
-              quantity: fuel.quantity,
-              pricePerLiter: fuel.pricePerLiter,
-              odometerReading: fuel.odometerReading,
-              filledAt: fuel.filledAt,
-              receiptImage: fuel.receiptImage,
-              notes: fuel.notes,
-            }}
-            onSubmit={handleSubmit}
-            loading={updateFuel.isPending}
-            submitLabel="Update Fuel Log"
-          />
-        </CardContent>
-      </Card>
-    </div>
+      <FuelForm
+        defaultValues={{
+          vehicleId: fuel.vehicleId,
+          tripId: fuel.tripId,
+          driverId: fuel.driverId,
+          fuelStation: fuel.fuelStation,
+          fuelType: fuel.fuelType,
+          quantity: fuel.quantity,
+          pricePerLiter: fuel.pricePerLiter,
+          odometerReading: fuel.odometerReading,
+          filledAt: fuel.filledAt,
+          receiptImage: fuel.receiptImage,
+          notes: fuel.notes,
+        }}
+        submitting={updateMutation.isPending}
+        submitLabel="Update Fuel Log"
+        onCancel={() => router.push(`/fuel/${id}`)}
+        onSubmit={async (values: FuelFormValues) => {
+          try {
+            await updateMutation.mutateAsync({
+              id,
+              payload: {
+                ...values,
+                tripId: values.tripId || undefined,
+                driverId: values.driverId || undefined,
+                receiptImage: values.receiptImage || undefined,
+                notes: values.notes || undefined,
+              },
+            });
+            toast.success('Fuel log updated');
+            router.push(`/fuel/${id}`);
+          } catch (error) {
+            const message =
+              error instanceof AxiosError
+                ? ((error.response?.data as { message?: string })?.message ?? error.message)
+                : 'Failed to update fuel log';
+            toast.error(message);
+          }
+        }}
+      />
+    </motion.div>
   );
 }

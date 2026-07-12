@@ -1,12 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { motion, useReducedMotion } from 'framer-motion';
 import { FormField } from '@/components/forms/form-field';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import {
@@ -166,6 +167,7 @@ export function DriverForm({
     handleSubmit,
     setValue,
     watch,
+    control,
     formState: { errors },
   } = useForm<DriverFormSchema>({
     resolver: zodResolver(driverFormSchema),
@@ -224,7 +226,18 @@ export function DriverForm({
             <Input id="phone" placeholder="+919876543210" {...register('phone')} />
           </FormField>
           <FormField label="Date of Birth" htmlFor="dateOfBirth" error={errors.dateOfBirth?.message}>
-            <Input id="dateOfBirth" type="date" {...register('dateOfBirth')} />
+            <Controller
+              name="dateOfBirth"
+              control={control}
+              render={({ field }) => (
+                <DatePicker
+                  id="dateOfBirth"
+                  value={field.value}
+                  onChange={field.onChange}
+                  disableFuture
+                />
+              )}
+            />
           </FormField>
           <FormField
             label="Alternate Phone"
@@ -271,14 +284,38 @@ export function DriverForm({
             htmlFor="licenseIssueDate"
             error={errors.licenseIssueDate?.message}
           >
-            <Input id="licenseIssueDate" type="date" {...register('licenseIssueDate')} />
+            <Controller
+              name="licenseIssueDate"
+              control={control}
+              render={({ field }) => (
+                <DatePicker
+                  id="licenseIssueDate"
+                  value={field.value}
+                  onChange={field.onChange}
+                  disableFuture
+                />
+              )}
+            />
           </FormField>
           <FormField
             label="Expiry Date"
             htmlFor="licenseExpiryDate"
             error={errors.licenseExpiryDate?.message}
           >
-            <Input id="licenseExpiryDate" type="date" {...register('licenseExpiryDate')} />
+            <Controller
+              name="licenseExpiryDate"
+              control={control}
+              render={({ field }) => (
+                <DatePicker
+                  id="licenseExpiryDate"
+                  value={field.value}
+                  onChange={field.onChange}
+                  requireFuture
+                  minDate={watch('licenseIssueDate') || undefined}
+                  aria-invalid={Boolean(errors.licenseExpiryDate)}
+                />
+              )}
+            />
           </FormField>
         </Section>
 
@@ -291,7 +328,19 @@ export function DriverForm({
             <Input id="employeeCode" {...register('employeeCode')} />
           </FormField>
           <FormField label="Joining Date" htmlFor="joiningDate" error={errors.joiningDate?.message}>
-            <Input id="joiningDate" type="date" {...register('joiningDate')} />
+            <Controller
+              name="joiningDate"
+              control={control}
+              render={({ field }) => (
+                <DatePicker
+                  id="joiningDate"
+                  value={field.value}
+                  onChange={field.onChange}
+                  disableFuture
+                  aria-invalid={Boolean(errors.joiningDate)}
+                />
+              )}
+            />
           </FormField>
           <FormField
             label="Experience (years)"

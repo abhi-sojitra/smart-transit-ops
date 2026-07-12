@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useState } from 'react';
+import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
@@ -12,6 +12,8 @@ import {
 } from '@transitops/shared-types';
 import { FormField } from '@/components/forms/form-field';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/date-picker';
+import { VehicleSelect } from '@/components/fleet/vehicle-select';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import {
@@ -28,6 +30,7 @@ import {
   type VehicleLookup,
 } from '@/types/maintenance';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { addDaysToDateInput } from '@/utils/date';
 
 const ALLOWED_FILE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
 const ALLOWED_FILE_EXT = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.pdf'];
@@ -120,7 +123,7 @@ const schema = z
 interface MaintenanceFormProps {
   mode: 'create' | 'edit';
   initialValues?: Partial<MaintenanceFormValues>;
-  vehicles: VehicleLookup[];
+  vehicles?: VehicleLookup[];
   status?: MaintenanceStatus;
   loading?: boolean;
   onSubmit: (values: MaintenanceFormValues) => void;
@@ -130,7 +133,6 @@ interface MaintenanceFormProps {
 export function MaintenanceForm({
   mode,
   initialValues,
-  vehicles,
   status,
   loading,
   onSubmit,
@@ -143,6 +145,7 @@ export function MaintenanceForm({
     handleSubmit,
     setValue,
     watch,
+    control,
     formState: { errors },
   } = useForm<MaintenanceFormValues>({
     resolver: zodResolver(schema),
@@ -169,19 +172,15 @@ export function MaintenanceForm({
   });
 
   const vehicleId = watch('vehicleId');
+  const startDate = watch('startDate');
+  const expectedCompletionDate = watch('expectedCompletionDate');
   const maintenanceType = watch('maintenanceType');
   const priority = watch('priority');
   const title = watch('title') ?? '';
   const description = watch('description') ?? '';
   const notes = watch('notes') ?? '';
 
-  useEffect(() => {
-    if (!vehicleId) return;
-    const vehicle = vehicles.find((v) => v.id === vehicleId);
-    if (vehicle && mode === 'create') {
-      setValue('odometerReading', vehicle.odometerReading);
-    }
-  }, [vehicleId, vehicles, mode, setValue]);
+  const nextServiceMinDate = addDaysToDateInput(expectedCompletionDate, 1);
 
   const handleFiles = (fileList: FileList | null) => {
     if (!onFilesSelected || !fileList?.length) return;
@@ -205,22 +204,19 @@ export function MaintenanceForm({
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
           <FormField label="Vehicle" htmlFor="vehicleId" error={errors.vehicleId?.message}>
-            <Select
+            <VehicleSelect
+              id="vehicleId"
               value={vehicleId}
+              valueKey="id"
               disabled={mode === 'edit' || notesOnly}
-              onValueChange={(v) => setValue('vehicleId', v, { shouldValidate: true })}
-            >
-              <SelectTrigger id="vehicleId">
-                <SelectValue placeholder="Select vehicle" />
-              </SelectTrigger>
-              <SelectContent>
-                {vehicles.map((v) => (
-                  <SelectItem key={v.id} value={v.id} disabled={v.status === 'RETIRED'}>
-                    {v.vehicleNumber} — {v.model} ({v.status.replaceAll('_', ' ')})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              onChange={(v) => setValue('vehicleId', v, { shouldValidate: true })}
+              onVehicleSelect={(vehicle) => {
+                if (vehicle && mode === 'create') {
+                  setValue('odometerReading', vehicle.mileage ?? '');
+                }
+              }}
+              aria-invalid={Boolean(errors.vehicleId)}
+            />
           </FormField>
           <FormField
             label="Odometer"
@@ -331,11 +327,18 @@ export function MaintenanceForm({
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-3">
           <FormField label="Start date" htmlFor="startDate" error={errors.startDate?.message}>
-            <Input
-              id="startDate"
-              type="date"
-              disabled={notesOnly}
-              {...register('startDate')}
+            <Controller
+              name="startDate"
+              control={control}
+              render={({ field }) => (
+                <DatePicker
+                  id="startDate"
+                  value={field.value}
+                  onChange={field.onChange}
+                  disabled={notesOnly}
+                  disablePast
+                />
+              )}
             />
           </FormField>
           <FormField
@@ -343,11 +346,19 @@ export function MaintenanceForm({
             htmlFor="expectedCompletionDate"
             error={errors.expectedCompletionDate?.message}
           >
-            <Input
-              id="expectedCompletionDate"
-              type="date"
-              disabled={notesOnly}
-              {...register('expectedCompletionDate')}
+            <Controller
+              name="expectedCompletionDate"
+              control={control}
+              render={({ field }) => (
+                <DatePicker
+                  id="expectedCompletionDate"
+                  value={field.value}
+                  onChange={field.onChange}
+                  disabled={notesOnly}
+                  disablePast
+                  minDate={startDate || undefined}
+                />
+              )}
             />
           </FormField>
           <FormField
@@ -355,11 +366,19 @@ export function MaintenanceForm({
             htmlFor="nextServiceDue"
             error={errors.nextServiceDue?.message}
           >
-            <Input
-              id="nextServiceDue"
-              type="date"
-              disabled={notesOnly}
-              {...register('nextServiceDue')}
+            <Controller
+              name="nextServiceDue"
+              control={control}
+              render={({ field }) => (
+                <DatePicker
+                  id="nextServiceDue"
+                  value={field.value}
+                  onChange={field.onChange}
+                  disabled={notesOnly}
+                  minDate={nextServiceMinDate}
+                  requireFuture={!nextServiceMinDate}
+                />
+              )}
             />
           </FormField>
         </CardContent>
