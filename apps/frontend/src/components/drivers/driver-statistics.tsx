@@ -98,7 +98,7 @@ export function DriverStatisticsCards({ statistics, loading }: DriverStatisticsP
       animate="show"
     >
       {cards.map((card) => (
-        <motion.div key={card.title} variants={staggerItem}>
+        <motion.div key={card.title} variants={staggerItem} className="h-full min-w-0">
           <StatCard
             title={card.title}
             value={card.value}
@@ -106,6 +106,7 @@ export function DriverStatisticsCards({ statistics, loading }: DriverStatisticsP
             loading={loading}
             tone={card.tone}
             hint={card.hint}
+            className="h-full"
           />
         </motion.div>
       ))}

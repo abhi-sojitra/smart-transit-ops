@@ -7,6 +7,8 @@ import { RoleSchema } from '../../schemas/role.schema';
 import { UserSchema } from '../../schemas/user.schema';
 import { DriverSchema } from '../../modules/driver/schema/driver.schema';
 import { buildDemoDrivers } from '../../modules/driver/seeds/driver.seed';
+import { VehicleSchema } from '../../modules/fleet/schema/vehicle.schema';
+import { buildDemoVehicles } from '../../modules/fleet/seeds/vehicle.seed';
 import { DEFAULT_ROLES } from './roles.seed';
 import { TEST_USERS } from './test-users.seed';
 import { seedTripDispatcherData } from './trip.seed';
@@ -88,7 +90,24 @@ async function runSeed() {
     );
   }
 
+  // Trip seed uses the legacy vehicle schema and creates trips/maintenance.
   await seedTripDispatcherData(mongoose);
+
+  // Re-register with fleet schema so demo vehicles include compliance fields.
+  if (mongoose.models.Vehicle) {
+    delete mongoose.models.Vehicle;
+  }
+  const VehicleModel = mongoose.model('Vehicle', VehicleSchema);
+
+  console.log('Seeding 20 demo fleet vehicles...');
+  const demoVehicles = buildDemoVehicles(20);
+  for (const vehicle of demoVehicles) {
+    await VehicleModel.findOneAndUpdate(
+      { vehicleId: vehicle.vehicleId },
+      { $set: vehicle },
+      { upsert: true, new: true },
+    );
+  }
 
   console.log('Seed completed successfully.');
   await mongoose.disconnect();

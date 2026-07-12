@@ -5,7 +5,6 @@ import type {
   MaintenanceStatus,
   TripStatus,
   UserAccountStatus,
-  VehicleStatus,
 } from './status';
 
 export interface User {
@@ -27,19 +26,8 @@ export interface Role {
   permissions: string[];
 }
 
-export interface Vehicle {
-  id: string;
-  vehicleId: string;
-  registrationNumber?: string;
-  make?: string;
-  model: string;
-  year?: number;
-  type?: string;
-  status: VehicleStatus;
-  maxCapacity: number;
-  lastService?: string;
-  mileage: number;
-}
+/** Re-exported from vehicle.ts for backward compatibility */
+export type { Vehicle } from './vehicle';
 
 /** Re-exported from driver.ts for backward compatibility */
 export type { Driver } from './driver';

@@ -20,6 +20,12 @@ export enum LicenseStatus {
   EXPIRED = 'EXPIRED',
 }
 
+export enum ComplianceStatus {
+  VALID = 'VALID',
+  EXPIRING = 'EXPIRING',
+  EXPIRED = 'EXPIRED',
+}
+
 export enum TripStatus {
   DRAFT = 'DRAFT',
   DISPATCHED = 'DISPATCHED',

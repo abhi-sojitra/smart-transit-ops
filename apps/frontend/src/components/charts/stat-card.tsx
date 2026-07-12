@@ -20,7 +20,7 @@ const toneStyles: Record<
   },
   primary: {
     bar: 'bg-primary',
-    icon: 'bg-primary text-primary-foreground',
+    icon: 'bg-primary/15 text-primary ring-1 ring-primary/20',
     chip: 'bg-primary/15 text-primary',
   },
   success: {
@@ -51,7 +51,7 @@ interface StatCardProps {
   icon: LucideIcon;
   growth?: number;
   loading?: boolean;
-  size?: 'default' | 'compact';
+  size?: 'default' | 'dense' | 'compact';
   className?: string;
   tone?: StatCardTone;
   hint?: string;
@@ -70,15 +70,35 @@ export function StatCard({
 }: StatCardProps) {
   const styles = toneStyles[tone];
   const compact = size === 'compact';
+  const dense = size === 'dense';
+  const small = compact || dense;
   const valueText = String(value);
+
+  const contentPadding = compact ? 'p-2.5' : dense ? 'p-4' : 'p-5';
+  const headerMargin = compact ? 'mb-1.5' : dense ? 'mb-3' : 'mb-4';
+  const iconSize = compact ? 'h-7 w-7' : dense ? 'h-9 w-9' : 'h-10 w-10';
+  const iconGlyph = compact ? 'h-3.5 w-3.5' : dense ? 'h-4 w-4' : 'h-5 w-5';
+  const titleClass = compact
+    ? 'text-xs text-muted-foreground'
+    : dense
+      ? 'text-sm'
+      : 'text-sm';
+  const titleMinHeight = compact ? 'min-h-[1.75rem]' : dense ? 'min-h-[2.25rem]' : 'min-h-[2.5rem]';
+  const valueClass = compact ? 'text-base' : dense ? 'text-2xl' : 'text-3xl';
+  const topBarClass = compact ? 'h-0.5' : dense ? 'h-1' : 'h-1.5';
+  const iconRadius = compact ? 'rounded-lg' : 'rounded-xl';
+  const chipClass = compact
+    ? 'shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold leading-none'
+    : 'shrink-0 rounded-md px-2 py-1 text-[11px] font-semibold leading-none';
+  const headerGap = compact ? 'gap-2' : 'gap-3';
 
   if (loading) {
     return (
-      <Card className={cn('min-w-0 overflow-hidden bg-card', className)}>
-        <CardContent className={cn(compact ? 'space-y-2 p-3' : 'space-y-3 p-5')}>
-          <Skeleton className={cn('rounded-xl', compact ? 'h-8 w-8' : 'h-10 w-10')} />
-          <Skeleton className={cn(compact ? 'h-3 w-20' : 'h-4 w-28')} />
-          <Skeleton className={cn(compact ? 'h-6 w-14' : 'h-8 w-16')} />
+      <Card className={cn('flex h-full min-w-0 flex-col overflow-hidden bg-card', className)}>
+        <CardContent className={cn('flex flex-1 flex-col', compact ? 'space-y-1.5 p-2.5' : dense ? 'space-y-2.5 p-4' : 'space-y-3 p-5')}>
+          <Skeleton className={cn('rounded-lg', iconSize)} />
+          <Skeleton className={cn(compact ? 'h-3 w-16' : dense ? 'h-3.5 w-24' : 'h-4 w-28')} />
+          <Skeleton className={cn(compact ? 'h-5 w-12' : dense ? 'h-7 w-16' : 'h-8 w-16')} />
         </CardContent>
       </Card>
     );
@@ -88,43 +108,40 @@ export function StatCard({
 
   return (
     <motion.div
-      className="min-w-0"
+      className="h-full min-w-0"
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25 }}
-      whileHover={compact ? undefined : { y: -2 }}
+      whileHover={small ? undefined : { y: -2 }}
     >
       <Card
         className={cn(
-          'min-w-0 overflow-hidden border border-border bg-card shadow-sm transition-shadow',
-          !compact && 'hover:shadow-md',
+          'flex h-full min-w-0 flex-col overflow-hidden border border-border bg-card shadow-sm transition-shadow',
+          !small && 'hover:shadow-md',
           className,
         )}
       >
-        {!compact ? <div className={cn('h-1.5 w-full', styles.bar)} /> : null}
-        <CardContent className={cn(compact ? 'p-3' : 'p-5')}>
+        <div className={cn(topBarClass, 'w-full shrink-0', styles.bar)} />
+        <CardContent className={cn('flex flex-1 flex-col', contentPadding)}>
           <div
             className={cn(
-              'flex items-center justify-between gap-3',
-              compact ? 'mb-2' : 'mb-4',
+              'flex items-center justify-between',
+              headerGap,
+              headerMargin,
             )}
           >
             <div
               className={cn(
-                'flex shrink-0 items-center justify-center rounded-xl shadow-sm',
-                compact ? 'h-8 w-8' : 'h-10 w-10',
+                'flex shrink-0 items-center justify-center shadow-sm',
+                iconRadius,
+                iconSize,
                 styles.icon,
               )}
             >
-              <Icon className={cn(compact ? 'h-4 w-4' : 'h-5 w-5')} strokeWidth={2.25} />
+              <Icon className={cn(iconGlyph)} strokeWidth={2.25} />
             </div>
             {hint ? (
-              <span
-                className={cn(
-                  'rounded-md px-2 py-1 text-[11px] font-semibold leading-none',
-                  styles.chip,
-                )}
-              >
+              <span className={cn(chipClass, styles.chip)}>
                 {hint}
               </span>
             ) : null}
@@ -132,17 +149,18 @@ export function StatCard({
 
           <p
             className={cn(
-              'font-semibold text-foreground',
-              compact ? 'text-xs text-muted-foreground' : 'text-sm',
+              titleMinHeight,
+              'font-semibold leading-snug text-foreground',
+              titleClass,
             )}
           >
             {title}
           </p>
-          <div className="mt-1 flex min-w-0 items-end justify-between gap-2">
+          <div className="mt-auto flex min-w-0 items-end justify-between gap-2 pt-1">
             <p
               className={cn(
                 'min-w-0 truncate font-bold tracking-tight text-foreground tabular-nums',
-                compact ? 'text-lg' : 'text-3xl',
+                valueClass,
               )}
               title={valueText}
             >
