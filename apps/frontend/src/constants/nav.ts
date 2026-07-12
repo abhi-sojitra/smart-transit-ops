@@ -10,6 +10,8 @@ import {
   Settings,
   Receipt,
   FileText,
+  Shield,
+  Building2,
 } from 'lucide-react';
 
 export const APP_NAME = 'TransitOps';
@@ -38,7 +40,17 @@ export const NAV_ITEMS: NavItem[] = [
   },
   { title: 'Analytics', href: '/analytics', icon: BarChart3 },
   { title: 'Reports', href: '/reports', icon: FileText },
-  { title: 'Settings', href: '/settings', icon: Settings },
+  {
+    title: 'Settings',
+    href: '/settings',
+    icon: Settings,
+    children: [
+      { title: 'Overview', href: '/settings', icon: Settings },
+      { title: 'Users', href: '/settings/users', icon: Users },
+      { title: 'Roles', href: '/settings/roles', icon: Shield },
+      { title: 'Company', href: '/settings/company', icon: Building2 },
+    ],
+  },
 ];
 
 export function isNavActive(pathname: string, href: string) {

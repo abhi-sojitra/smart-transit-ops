@@ -297,13 +297,21 @@ export class MaintenanceController {
     FilesInterceptor('files', 10, {
       storage: diskStorage({
         destination: uploadDir,
-        filename: (_req, file, cb) => {
+        filename: (
+          _req: unknown,
+          file: Express.Multer.File,
+          cb: (error: Error | null, filename: string) => void,
+        ) => {
           const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
           cb(null, `${unique}${extname(file.originalname)}`);
         },
       }),
       limits: { fileSize: 10 * 1024 * 1024 },
-      fileFilter: (_req, file, cb) => {
+      fileFilter: (
+        _req: unknown,
+        file: Express.Multer.File,
+        cb: (error: Error | null, acceptFile: boolean) => void,
+      ) => {
         const allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
         const ext = extname(file.originalname).toLowerCase();
         const allowedExt = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.pdf'];

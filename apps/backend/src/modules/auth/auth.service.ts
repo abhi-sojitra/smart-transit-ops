@@ -41,6 +41,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password');
     }
 
+    await this.users.recordLoginSuccess(String(user._id));
     return this.issueTokens(user);
   }
 

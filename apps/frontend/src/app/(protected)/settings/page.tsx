@@ -1,103 +1,140 @@
 'use client';
 
-import type { ColumnDef } from '@tanstack/react-table';
-import type { User } from '@transitops/shared-types';
+import Link from 'next/link';
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 import { PageHeader } from '@/components/layout/page-header';
 import { Breadcrumb } from '@/components/layout/breadcrumb';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { FormField } from '@/components/forms/form-field';
-import { Input } from '@/components/ui/input';
+import { SettingsStat } from '@/components/settings/settings-stat';
+import { SettingsCard } from '@/components/settings/settings-card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { DataTable } from '@/components/data-table/data-table';
-import { mockUsers } from '@/constants/mock-data';
+import { EmptyState } from '@/components/feedback/empty-state';
+import { useAdminStatistics } from '@/hooks/use-admin';
+import { formatNumber } from '@/components/dashboard/format';
 
-const columns: ColumnDef<User>[] = [
-  {
-    id: 'name',
-    header: 'User',
-    cell: ({ row }) => `${row.original.firstName} ${row.original.lastName}`,
-  },
-  { accessorKey: 'email', header: 'Email' },
-  {
-    accessorKey: 'roles',
-    header: 'Role',
-    cell: ({ row }) => row.original.roles.join(', '),
-  },
-  {
-    accessorKey: 'status',
-    header: 'Status',
-    cell: ({ row }) => <Badge status={row.original.status}>{row.original.status}</Badge>,
-  },
-  {
-    id: 'actions',
-    header: 'Actions',
-    cell: () => (
-      <Button variant="outline" size="sm">
-        Edit
-      </Button>
-    ),
-  },
-];
+export default function SettingsHomePage() {
+  const statsQuery = useAdminStatistics();
+  const stats = statsQuery.data;
 
-export default function SettingsPage() {
   return (
     <div className="space-y-6">
-      <div>
-        <Breadcrumb items={[{ label: 'Home', href: '/dashboard' }, { label: 'Settings' }]} />
-        <PageHeader
-          title="Settings & RBAC"
-          description="Manage organization preferences, users, and roles."
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <Breadcrumb items={[{ label: 'Home', href: '/dashboard' }, { label: 'Settings' }]} />
+          <PageHeader
+            title="Administration"
+            description="Users, roles, permissions, security, and audit."
+          />
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/settings/users">Manage users</Link>
+          </Button>
+          <Button size="sm" asChild>
+            <Link href="/settings/roles">Manage roles</Link>
+          </Button>
+        </div>
+      </div>
+
+      {statsQuery.isError ? (
+        <EmptyState
+          title="Stats unavailable"
+          description="Could not load administration statistics."
+          actionLabel="Retry"
+          onAction={() => void statsQuery.refetch()}
+        />
+      ) : null}
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <SettingsStat
+          label="Total users"
+          value={stats ? formatNumber(stats.totalUsers) : '—'}
+          hint={stats ? `${stats.activeUsers} active` : undefined}
+          loading={statsQuery.isLoading}
+        />
+        <SettingsStat
+          label="Roles"
+          value={stats ? formatNumber(stats.totalRoles) : '—'}
+          loading={statsQuery.isLoading}
+        />
+        <SettingsStat
+          label="Permissions"
+          value={stats ? formatNumber(stats.totalPermissions) : '—'}
+          loading={statsQuery.isLoading}
+        />
+        <SettingsStat
+          label="Failed logins today"
+          value={stats ? formatNumber(stats.failedLoginsToday) : '—'}
+          loading={statsQuery.isLoading}
+        />
+        <SettingsStat
+          label="Audit events today"
+          value={stats ? formatNumber(stats.auditEventsToday) : '—'}
+          loading={statsQuery.isLoading}
+        />
+        <SettingsStat
+          label="Inactive users"
+          value={stats ? formatNumber(stats.inactiveUsers) : '—'}
+          loading={statsQuery.isLoading}
         />
       </div>
 
-      <Tabs defaultValue="users">
-        <TabsList>
-          <TabsTrigger value="general">General</TabsTrigger>
-          <TabsTrigger value="users">Users</TabsTrigger>
-          <TabsTrigger value="roles">Roles</TabsTrigger>
-          <TabsTrigger value="notifications">Notifications</TabsTrigger>
-        </TabsList>
+      <div className="grid gap-4 xl:grid-cols-2">
+        <SettingsCard title="Users by role" description="Distribution across RBAC roles">
+          <div className="h-64">
+            {stats?.usersByRole?.length ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={stats.usersByRole}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                  <XAxis dataKey="role" stroke="var(--muted-foreground)" fontSize={11} />
+                  <YAxis stroke="var(--muted-foreground)" fontSize={12} />
+                  <Tooltip
+                    contentStyle={{
+                      background: 'var(--card)',
+                      border: '1px solid var(--border)',
+                      borderRadius: 8,
+                    }}
+                  />
+                  <Bar dataKey="count" fill="var(--primary)" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <EmptyState title="No role distribution yet" className="py-10" />
+            )}
+          </div>
+        </SettingsCard>
 
-        <TabsContent value="general">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">General Settings</CardTitle>
-            </CardHeader>
-            <CardContent className="grid max-w-xl gap-4">
-              <FormField label="Organization Name" htmlFor="org">
-                <Input id="org" defaultValue="TransitOps Fleet Co." />
-              </FormField>
-              <FormField label="Timezone" htmlFor="tz">
-                <Input id="tz" defaultValue="America/Chicago" />
-              </FormField>
-              <Button className="w-fit">Save changes</Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="users">
-          <DataTable columns={columns} data={mockUsers} searchPlaceholder="Search users..." />
-        </TabsContent>
-
-        <TabsContent value="roles">
-          <Card>
-            <CardContent className="p-6 text-sm text-muted-foreground">
-              Role definitions are seeded on the backend (`SUPER_ADMIN`, `ADMIN`, `DISPATCHER`,
-              and more). Permission editing will be wired when RBAC APIs are implemented.
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="notifications">
-          <Card>
-            <CardContent className="p-6 text-sm text-muted-foreground">
-              Notification preferences scaffold — email and in-app alerts coming soon.
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+        <SettingsCard title="Login activity" description="Last 7 days">
+          <div className="h-64">
+            {stats?.loginActivity?.length ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={stats.loginActivity}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                  <XAxis dataKey="label" stroke="var(--muted-foreground)" fontSize={11} />
+                  <YAxis stroke="var(--muted-foreground)" fontSize={12} />
+                  <Tooltip
+                    contentStyle={{
+                      background: 'var(--card)',
+                      border: '1px solid var(--border)',
+                      borderRadius: 8,
+                    }}
+                  />
+                  <Bar dataKey="value" fill="var(--info)" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <EmptyState title="No login activity yet" className="py-10" />
+            )}
+          </div>
+        </SettingsCard>
+      </div>
     </div>
   );
 }

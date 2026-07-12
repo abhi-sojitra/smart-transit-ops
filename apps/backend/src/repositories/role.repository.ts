@@ -20,15 +20,19 @@ export class RoleRepository extends BaseRepository<RoleDocument> {
   }
 
   findAll(): Promise<RoleDocument[]> {
-    return this.roleModel.find().exec();
+    return this.roleModel.find().sort({ name: 1 }).exec();
   }
 
   findByCode(code: RoleCode): Promise<RoleDocument | null> {
     return this.roleModel.findOne({ code }).exec();
   }
 
+  findByCodes(codes: RoleCode[]): Promise<RoleDocument[]> {
+    return this.roleModel.find({ code: { $in: codes } }).exec();
+  }
+
   update(id: string, data: Partial<Role>): Promise<RoleDocument | null> {
-    return this.roleModel.findByIdAndUpdate(id, data, { new: true }).exec();
+    return this.roleModel.findByIdAndUpdate(id, { $set: data }, { new: true }).exec();
   }
 
   async delete(id: string): Promise<boolean> {
@@ -40,5 +44,22 @@ export class RoleRepository extends BaseRepository<RoleDocument> {
     return this.roleModel
       .findOneAndUpdate({ code }, { $set: { ...data, code } }, { upsert: true, new: true })
       .exec() as Promise<RoleDocument>;
+  }
+
+  search(search?: string) {
+    const filter: Record<string, unknown> = {};
+    if (search?.trim()) {
+      const q = search.trim();
+      filter.$or = [
+        { name: { $regex: q, $options: 'i' } },
+        { code: { $regex: q, $options: 'i' } },
+        { description: { $regex: q, $options: 'i' } },
+      ];
+    }
+    return this.roleModel.find(filter).sort({ name: 1 }).exec();
+  }
+
+  countAll() {
+    return this.roleModel.countDocuments().exec();
   }
 }

@@ -14,6 +14,10 @@ import { MaintenanceModule } from './modules/maintenance/maintenance.module';
 import { TripModule } from './modules/trip/trip.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
+import { PermissionsModule } from './modules/permissions/permissions.module';
+import { SettingsModule } from './modules/settings/settings.module';
+import { AuditModule } from './modules/audit/audit.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 import { envValidationSchema } from './config/env.validation';
 import { HealthController } from './health.controller';
 
@@ -28,6 +32,10 @@ import { HealthController } from './health.controller';
     AuthModule,
     UsersModule,
     RolesModule,
+    PermissionsModule,
+    SettingsModule,
+    AuditModule,
+    NotificationsModule,
     DriverModule,
     FleetModule,
     FuelModule,

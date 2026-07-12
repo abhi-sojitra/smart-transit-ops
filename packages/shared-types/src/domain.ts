@@ -14,8 +14,11 @@ export interface User {
   email: string;
   firstName: string;
   lastName: string;
+  phone?: string;
+  avatarUrl?: string;
   roles: RoleCode[];
   status: UserAccountStatus;
+  lastLoginAt?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -26,6 +29,9 @@ export interface Role {
   name: string;
   description?: string;
   permissions: string[];
+  isSystem?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 /** Re-exported from vehicle.ts for backward compatibility */

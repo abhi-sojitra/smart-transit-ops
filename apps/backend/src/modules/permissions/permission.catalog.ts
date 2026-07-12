@@ -1,0 +1,156 @@
+import type { RoleCode } from '@transitops/shared-types';
+
+const MODULES: Array<{ module: string; group: string; actions: string[] }> = [
+  { module: 'VEHICLE', group: 'Fleet', actions: ['VIEW', 'CREATE', 'UPDATE', 'DELETE'] },
+  { module: 'DRIVER', group: 'Fleet', actions: ['VIEW', 'CREATE', 'UPDATE', 'DELETE'] },
+  {
+    module: 'TRIP',
+    group: 'Operations',
+    actions: ['VIEW', 'CREATE', 'DISPATCH', 'COMPLETE', 'CANCEL', 'UPDATE', 'DELETE'],
+  },
+  {
+    module: 'MAINTENANCE',
+    group: 'Operations',
+    actions: ['VIEW', 'CREATE', 'UPDATE', 'DELETE', 'COMPLETE'],
+  },
+  { module: 'FUEL', group: 'Finance', actions: ['VIEW', 'CREATE', 'UPDATE', 'DELETE'] },
+  {
+    module: 'EXPENSE',
+    group: 'Finance',
+    actions: ['VIEW', 'CREATE', 'UPDATE', 'DELETE', 'APPROVE'],
+  },
+  { module: 'DASHBOARD', group: 'Analytics', actions: ['VIEW'] },
+  { module: 'REPORTS', group: 'Analytics', actions: ['VIEW', 'EXPORT'] },
+  {
+    module: 'SETTINGS',
+    group: 'Administration',
+    actions: ['VIEW', 'UPDATE'],
+  },
+  {
+    module: 'USERS',
+    group: 'Administration',
+    actions: ['VIEW', 'CREATE', 'UPDATE', 'DELETE'],
+  },
+  {
+    module: 'ROLES',
+    group: 'Administration',
+    actions: ['VIEW', 'CREATE', 'UPDATE', 'DELETE'],
+  },
+  {
+    module: 'PERMISSIONS',
+    group: 'Administration',
+    actions: ['VIEW', 'UPDATE'],
+  },
+  {
+    module: 'NOTIFICATIONS',
+    group: 'Administration',
+    actions: ['VIEW', 'UPDATE'],
+  },
+  {
+    module: 'AUDIT',
+    group: 'Administration',
+    actions: ['VIEW', 'EXPORT'],
+  },
+  {
+    module: 'PROFILE',
+    group: 'Account',
+    actions: ['VIEW', 'UPDATE'],
+  },
+];
+
+export function buildPermissionCatalog() {
+  return MODULES.flatMap(({ module, group, actions }) =>
+    actions.map((action) => ({
+      code: `${module}:${action}`,
+      module,
+      action,
+      group,
+      description: `${action.replaceAll('_', ' ')} access for ${module.toLowerCase()}`,
+    })),
+  );
+}
+
+/** Default permission sets aligned with RBAC matrix in Prompt-08 */
+export const ROLE_PERMISSION_DEFAULTS: Record<RoleCode, string[]> = {
+  SUPER_ADMIN: ['*'],
+  ADMIN: buildPermissionCatalog().map((p) => p.code),
+  FLEET_MANAGER: [
+    'VEHICLE:VIEW',
+    'VEHICLE:CREATE',
+    'VEHICLE:UPDATE',
+    'VEHICLE:DELETE',
+    'DRIVER:VIEW',
+    'DRIVER:CREATE',
+    'DRIVER:UPDATE',
+    'TRIP:VIEW',
+    'TRIP:CREATE',
+    'TRIP:DISPATCH',
+    'TRIP:COMPLETE',
+    'TRIP:CANCEL',
+    'MAINTENANCE:VIEW',
+    'MAINTENANCE:CREATE',
+    'MAINTENANCE:UPDATE',
+    'FUEL:VIEW',
+    'FUEL:CREATE',
+    'DASHBOARD:VIEW',
+    'REPORTS:VIEW',
+    'PROFILE:VIEW',
+    'PROFILE:UPDATE',
+  ],
+  DISPATCHER: [
+    'TRIP:VIEW',
+    'TRIP:CREATE',
+    'TRIP:DISPATCH',
+    'TRIP:COMPLETE',
+    'TRIP:CANCEL',
+    'DRIVER:VIEW',
+    'VEHICLE:VIEW',
+    'DASHBOARD:VIEW',
+    'PROFILE:VIEW',
+    'PROFILE:UPDATE',
+  ],
+  SAFETY_OFFICER: [
+    'DRIVER:VIEW',
+    'DRIVER:UPDATE',
+    'MAINTENANCE:VIEW',
+    'MAINTENANCE:CREATE',
+    'MAINTENANCE:UPDATE',
+    'REPORTS:VIEW',
+    'DASHBOARD:VIEW',
+    'PROFILE:VIEW',
+    'PROFILE:UPDATE',
+  ],
+  FINANCIAL_ANALYST: [
+    'FUEL:VIEW',
+    'FUEL:CREATE',
+    'FUEL:UPDATE',
+    'EXPENSE:VIEW',
+    'EXPENSE:CREATE',
+    'EXPENSE:UPDATE',
+    'EXPENSE:APPROVE',
+    'REPORTS:VIEW',
+    'REPORTS:EXPORT',
+    'DASHBOARD:VIEW',
+    'PROFILE:VIEW',
+    'PROFILE:UPDATE',
+  ],
+  OPERATOR: [
+    'TRIP:VIEW',
+    'VEHICLE:VIEW',
+    'FUEL:VIEW',
+    'FUEL:CREATE',
+    'PROFILE:VIEW',
+    'PROFILE:UPDATE',
+  ],
+  VIEWER: [
+    'VEHICLE:VIEW',
+    'DRIVER:VIEW',
+    'TRIP:VIEW',
+    'MAINTENANCE:VIEW',
+    'FUEL:VIEW',
+    'EXPENSE:VIEW',
+    'DASHBOARD:VIEW',
+    'REPORTS:VIEW',
+    'PROFILE:VIEW',
+  ],
+};
