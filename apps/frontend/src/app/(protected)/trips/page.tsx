@@ -3,18 +3,20 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Plus, Route } from 'lucide-react';
+import { AxiosError } from 'axios';
+import { motion, useReducedMotion } from 'framer-motion';
 import { PageHeader } from '@/components/layout/page-header';
 import { Breadcrumb } from '@/components/layout/breadcrumb';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/feedback/empty-state';
 import { TripStatisticsCards } from '@/components/trips/TripStatistics';
 import { TripFilters, type TripFilterState } from '@/components/trips/TripFilters';
-import { TripTable } from '@/components/trips/TripTable';
+import { TripLoadingSkeleton, TripTable } from '@/components/trips/TripTable';
+import { TripCard } from '@/components/trips/TripCard';
 import { DispatchDialog } from '@/components/trips/DispatchDialog';
 import { CompleteTripDialog } from '@/components/trips/CompleteTripDialog';
 import { CancelTripDialog } from '@/components/trips/CancelTripDialog';
+import { pageFade, staggerContainer } from '@/components/drivers/motion';
 import {
   useCancelTrip,
   useCompleteTrip,
@@ -23,18 +25,22 @@ import {
   useTripStatistics,
   useTrips,
 } from '@/hooks/use-trips';
+import { getTripId } from '@/components/trips/trip-display';
 import type { TripRecord } from '@/types/trip';
 import { TripStatus } from '@/types/trip';
 
+const DEFAULT_FILTERS: TripFilterState = {
+  search: '',
+  status: '',
+  startDate: '',
+  endDate: '',
+  sortBy: 'createdAt',
+  sortOrder: 'desc',
+};
+
 export default function TripsPage() {
-  const [filters, setFilters] = useState<TripFilterState>({
-    search: '',
-    status: '',
-    startDate: '',
-    endDate: '',
-    sortBy: 'createdAt',
-    sortOrder: 'desc',
-  });
+  const reduceMotion = useReducedMotion();
+  const [filters, setFilters] = useState<TripFilterState>(DEFAULT_FILTERS);
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<TripRecord | null>(null);
   const [dispatchOpen, setDispatchOpen] = useState(false);
@@ -55,18 +61,39 @@ export default function TripsPage() {
     [filters, page],
   );
 
-  const { data, isLoading, isError, refetch } = useTrips(queryParams);
-  const { data: stats, isLoading: statsLoading } = useTripStatistics();
+  const listQuery = useTrips(queryParams);
+  const statsQuery = useTripStatistics();
   const dispatchMutation = useDispatchTrip();
   const startMutation = useStartTrip();
   const completeMutation = useCompleteTrip();
   const cancelMutation = useCancelTrip();
 
-  const trips = data?.data ?? [];
-  const meta = data?.meta;
+  const errorMessage = useMemo(() => {
+    if (!listQuery.error) return null;
+    if (listQuery.error instanceof AxiosError) {
+      return (
+        (listQuery.error.response?.data as { message?: string })?.message ??
+        listQuery.error.message
+      );
+    }
+    return listQuery.error.message;
+  }, [listQuery.error]);
+
+  const trips = listQuery.data?.data ?? [];
+  const meta = listQuery.data?.meta;
+
+  const updateFilters = (next: TripFilterState) => {
+    setPage(1);
+    setFilters(next);
+  };
 
   return (
-    <div className="space-y-6">
+    <motion.div
+      className="space-y-6"
+      variants={pageFade}
+      initial={reduceMotion ? false : 'hidden'}
+      animate="show"
+    >
       <div>
         <Breadcrumb items={[{ label: 'Home', href: '/dashboard' }, { label: 'Trips & Dispatch' }]} />
         <PageHeader
@@ -83,92 +110,119 @@ export default function TripsPage() {
         />
       </div>
 
-      <TripStatisticsCards stats={stats} loading={statsLoading} />
+      <TripStatisticsCards stats={statsQuery.data} loading={statsQuery.isLoading} />
 
-      <Card>
-        <CardContent className="space-y-4 p-6">
-          <TripFilters
-            value={filters}
-            onChange={(next) => {
-              setPage(1);
-              setFilters(next);
+      <TripFilters
+        value={filters}
+        onChange={updateFilters}
+        onReset={() => {
+          setPage(1);
+          setFilters(DEFAULT_FILTERS);
+        }}
+      />
+
+      <div className="hidden md:block">
+        <TripTable
+          trips={trips}
+          meta={meta}
+          loading={listQuery.isLoading}
+          error={errorMessage}
+          sortBy={filters.sortBy}
+          sortOrder={filters.sortOrder}
+          onSortChange={(sortBy, sortOrder) => updateFilters({ ...filters, sortBy, sortOrder })}
+          onPageChange={setPage}
+          onRetry={() => listQuery.refetch()}
+          onDispatch={(trip) => {
+            setSelected(trip);
+            setDispatchOpen(true);
+          }}
+          onStart={(trip) => startMutation.mutate(getTripId(trip))}
+          onComplete={(trip) => {
+            setSelected(trip);
+            setCompleteOpen(true);
+          }}
+          onCancel={(trip) => {
+            setSelected(trip);
+            setCancelOpen(true);
+          }}
+        />
+      </div>
+
+      <motion.div
+        className="grid gap-4 md:hidden"
+        variants={staggerContainer}
+        initial={reduceMotion ? false : 'hidden'}
+        animate="show"
+      >
+        {listQuery.isLoading ? (
+          <TripLoadingSkeleton />
+        ) : errorMessage ? (
+          <EmptyState
+            icon={Route}
+            title="Unable to load trips"
+            description={errorMessage}
+            actionLabel="Retry"
+            onAction={() => listQuery.refetch()}
+          />
+        ) : trips.length === 0 ? (
+          <EmptyState
+            icon={Route}
+            title="No trips found"
+            description="Try adjusting search or filters, or create a new trip."
+            actionLabel="Create trip"
+            onAction={() => {
+              window.location.href = '/trips/new';
             }}
           />
-
-          {isLoading ? (
-            <div className="space-y-3">
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-64 w-full" />
-            </div>
-          ) : null}
-
-          {isError ? (
-            <EmptyState
-              icon={Route}
-              title="Unable to load trips"
-              description="Check API connectivity and try again."
-              actionLabel="Retry"
-              onAction={() => refetch()}
-            />
-          ) : null}
-
-          {!isLoading && !isError && trips.length === 0 ? (
-            <EmptyState
-              icon={Route}
-              title="No trips yet"
-              description="Create your first trip to start dispatching."
-              actionLabel="Create trip"
-              onAction={() => {
-                window.location.href = '/trips/new';
-              }}
-            />
-          ) : null}
-
-          {!isLoading && !isError && trips.length > 0 ? (
-            <>
-              <TripTable
-                data={trips}
-                onDispatch={(trip) => {
-                  setSelected(trip);
+        ) : (
+          <>
+            {trips.map((trip) => (
+              <TripCard
+                key={getTripId(trip)}
+                trip={trip}
+                onDispatch={(item) => {
+                  setSelected(item);
                   setDispatchOpen(true);
                 }}
-                onStart={(trip) => startMutation.mutate(trip._id)}
-                onComplete={(trip) => {
-                  setSelected(trip);
+                onStart={(item) => startMutation.mutate(getTripId(item))}
+                onComplete={(item) => {
+                  setSelected(item);
                   setCompleteOpen(true);
                 }}
-                onCancel={(trip) => {
-                  setSelected(trip);
+                onCancel={(item) => {
+                  setSelected(item);
                   setCancelOpen(true);
                 }}
               />
-              <div className="flex items-center justify-between text-sm text-muted-foreground">
-                <span>
-                  Page {meta?.page ?? 1} of {meta?.totalPages ?? 1} · {meta?.total ?? 0} trips
-                </span>
+            ))}
+            {meta ? (
+              <div className="flex items-center justify-between rounded-xl border border-border bg-card/50 px-3 py-2.5">
+                <p className="text-xs text-muted-foreground">
+                  Page {meta.page} / {Math.max(meta.totalPages, 1)}
+                </p>
                 <div className="flex gap-2">
                   <Button
                     variant="outline"
                     size="sm"
-                    disabled={(meta?.page ?? 1) <= 1}
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={meta.page <= 1}
+                    onClick={() => setPage((p) => p - 1)}
                   >
                     Prev
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
-                    disabled={(meta?.page ?? 1) >= (meta?.totalPages ?? 1)}
+                    disabled={meta.page >= meta.totalPages}
                     onClick={() => setPage((p) => p + 1)}
                   >
                     Next
                   </Button>
                 </div>
               </div>
-            </>
-          ) : null}
-        </CardContent>
-      </Card>
+            ) : null}
+          </>
+        )}
+      </motion.div>
 
       <DispatchDialog
         open={dispatchOpen}
@@ -177,7 +231,7 @@ export default function TripsPage() {
         onOpenChange={setDispatchOpen}
         onConfirm={() => {
           if (!selected) return;
-          dispatchMutation.mutate(selected._id, {
+          dispatchMutation.mutate(getTripId(selected), {
             onSuccess: () => setDispatchOpen(false),
           });
         }}
@@ -191,7 +245,7 @@ export default function TripsPage() {
         onConfirm={(values) => {
           if (!selected) return;
           completeMutation.mutate(
-            { id: selected._id, payload: values },
+            { id: getTripId(selected), payload: values },
             { onSuccess: () => setCompleteOpen(false) },
           );
         }}
@@ -205,11 +259,11 @@ export default function TripsPage() {
         onConfirm={(values) => {
           if (!selected) return;
           cancelMutation.mutate(
-            { id: selected._id, payload: values },
+            { id: getTripId(selected), payload: values },
             { onSuccess: () => setCancelOpen(false) },
           );
         }}
       />
-    </div>
+    </motion.div>
   );
 }

@@ -98,14 +98,21 @@ export async function seedTripDispatcherData(mongoose: typeof import('mongoose')
   const availableVehicles = vehicles.filter((v) => v.status === VehicleStatus.AVAILABLE);
   const availableDrivers = drivers.filter((d) => d.status === DriverStatus.AVAILABLE);
 
+  // Keep a few assets free so create/dispatch demos still work after seeding.
+  const reservedVehicleCount = Math.min(3, availableVehicles.length);
+  const reservedDriverCount = Math.min(3, availableDrivers.length);
+  const assignableVehicles = availableVehicles.slice(reservedVehicleCount);
+  const assignableDrivers = availableDrivers.slice(reservedDriverCount);
+  const tripVehicles = assignableVehicles.length ? assignableVehicles : availableVehicles;
+  const tripDrivers = assignableDrivers.length ? assignableDrivers : availableDrivers;
+
   for (let i = 1; i <= 50; i++) {
     const tripNumber = `TR-${String(i).padStart(4, '0')}`;
     const status = TRIP_STATUSES[i % TRIP_STATUSES.length];
     const [source, destination] = CITIES[i % CITIES.length];
     const cargo = CARGO[i % CARGO.length];
-    const vehicle = availableVehicles[i % Math.max(availableVehicles.length, 1)] ?? vehicles[0];
-    const driver =
-      availableDrivers[i % Math.max(availableDrivers.length, 1)] ?? drivers[0];
+    const vehicle = tripVehicles[i % Math.max(tripVehicles.length, 1)] ?? vehicles[0];
+    const driver = tripDrivers[i % Math.max(tripDrivers.length, 1)] ?? drivers[0];
     const start = new Date();
     start.setDate(start.getDate() - (50 - i));
     const end = new Date(start);
@@ -141,7 +148,19 @@ export async function seedTripDispatcherData(mongoose: typeof import('mongoose')
     }
 
     await TripModel.create(payload);
+
+    if (status === TripStatus.DISPATCHED || status === TripStatus.IN_PROGRESS) {
+      await Promise.all([
+        VehicleModel.updateOne(
+          { _id: vehicle._id },
+          { $set: { status: VehicleStatus.ON_TRIP } },
+        ),
+        DriverModel.updateOne({ _id: driver._id }, { $set: { status: DriverStatus.ON_TRIP } }),
+      ]);
+    }
   }
 
-  console.log('Trip dispatcher seed data ready.');
+  console.log(
+    `Trip dispatcher seed data ready (${reservedVehicleCount} vehicles and ${reservedDriverCount} drivers reserved as free).`,
+  );
 }
