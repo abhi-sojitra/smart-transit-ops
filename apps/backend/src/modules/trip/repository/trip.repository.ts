@@ -25,8 +25,14 @@ export class TripRepository {
   findById(id: string): Promise<TripDocument | null> {
     return this.model
       .findOne({ _id: id, isDeleted: { $ne: true } })
-      .populate('vehicleId')
-      .populate('driverId')
+      .populate({
+        path: 'vehicleId',
+        select: 'vehicleId vehicleNumber registrationNumber make model status maxCapacity',
+      })
+      .populate({
+        path: 'driverId',
+        select: 'firstName lastName fullName employeeCode status',
+      })
       .exec();
   }
 
@@ -41,8 +47,14 @@ export class TripRepository {
     const [data, total] = await Promise.all([
       this.model
         .find(filter)
-        .populate('vehicleId')
-        .populate('driverId')
+        .populate({
+          path: 'vehicleId',
+          select: 'vehicleId vehicleNumber registrationNumber make model status maxCapacity',
+        })
+        .populate({
+          path: 'driverId',
+          select: 'firstName lastName fullName employeeCode status',
+        })
         .sort({ [sortField]: sortOrder })
         .skip((page - 1) * limit)
         .limit(limit)
@@ -85,14 +97,42 @@ export class TripRepository {
     return count > 0;
   }
 
+  async findBusyVehicleIds(excludeTripId?: string): Promise<string[]> {
+    const filter: FilterQuery<Trip> = {
+      isDeleted: { $ne: true },
+      status: { $in: ACTIVE_TRIP_STATUSES },
+    };
+    if (excludeTripId) {
+      filter._id = { $ne: new Types.ObjectId(excludeTripId) };
+    }
+    return this.model.distinct('vehicleId', filter).exec().then((ids) => ids.map(String));
+  }
+
+  async findBusyDriverIds(excludeTripId?: string): Promise<string[]> {
+    const filter: FilterQuery<Trip> = {
+      isDeleted: { $ne: true },
+      status: { $in: ACTIVE_TRIP_STATUSES },
+    };
+    if (excludeTripId) {
+      filter._id = { $ne: new Types.ObjectId(excludeTripId) };
+    }
+    return this.model.distinct('driverId', filter).exec().then((ids) => ids.map(String));
+  }
+
   update(id: string, data: Partial<Trip>): Promise<TripDocument | null> {
     const $set = Object.fromEntries(
       Object.entries(data).filter(([, value]) => value !== undefined),
     );
     return this.model
       .findOneAndUpdate({ _id: id, isDeleted: { $ne: true } }, { $set }, { new: true })
-      .populate('vehicleId')
-      .populate('driverId')
+      .populate({
+        path: 'vehicleId',
+        select: 'vehicleId vehicleNumber registrationNumber make model status maxCapacity',
+      })
+      .populate({
+        path: 'driverId',
+        select: 'firstName lastName fullName employeeCode status',
+      })
       .exec();
   }
 
