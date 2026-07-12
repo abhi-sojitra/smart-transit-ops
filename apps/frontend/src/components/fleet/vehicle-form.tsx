@@ -1,16 +1,16 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { motion } from 'framer-motion';
 import { useSafeReducedMotion } from '@/hooks/use-safe-reduced-motion';
 import { FormField } from '@/components/forms/form-field';
+import { FormSection } from '@/components/forms/form-section';
+import { FormActionBar } from '@/components/forms/form-action-bar';
 import { Input } from '@/components/ui/input';
 import { DatePicker } from '@/components/ui/date-picker';
-import { Textarea } from '@/components/ui/textarea';
-import { Button } from '@/components/ui/button';
+import { CharacterCountTextarea } from '@/components/ui/character-count-textarea';
 import {
   Select,
   SelectContent,
@@ -18,8 +18,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useUiStore } from '@/store';
-import { actionBarSlide, staggerContainer, staggerItem } from '@/components/fleet/motion';
+import { staggerContainer } from '@/components/fleet/motion';
+import {
+  COUNTRIES,
+  DEFAULT_FORM_OPTIONS,
+  FORM_LIMITS,
+  INDIAN_STATES,
+  PLACEHOLDERS,
+} from '@/constants/form';
+import { useUnsavedChangesWarning } from '@/hooks/use-unsaved-changes';
 import {
   VehicleStatus,
   VehicleType,
@@ -27,15 +34,20 @@ import {
   type VehicleFormValues,
 } from '@/types/fleet';
 import { parseVehicleUniqueConflict } from '@/lib/vehicle-form-errors';
+import { optionalString, sanitizeTextInput, uppercase } from '@/utils/form-sanitize';
+import { enhanceRegister } from '@/utils/form-register';
+import {
+  employeeCodeField,
+  optionalTrimmedString,
+  requiredTrimmedString,
+  urlField,
+  vehicleNumberField,
+} from '@/utils/form-validation';
 
 const vehicleFormSchema = z
   .object({
-    vehicleId: z
-      .string()
-      .min(2, 'Vehicle ID is required')
-      .max(32)
-      .regex(/^[A-Za-z0-9-_]+$/, 'Only letters, numbers, hyphens, and underscores'),
-    registrationNumber: z.string().min(4, 'Registration number is required').max(20),
+    vehicleId: employeeCodeField,
+    registrationNumber: vehicleNumberField,
     vin: z
       .string()
       .optional()
@@ -43,29 +55,29 @@ const vehicleFormSchema = z
       .refine((value) => !value || (value.length >= 11 && value.length <= 17), {
         message: 'VIN must be 11–17 characters when provided',
       }),
-    make: z.string().min(1, 'Make is required').max(80),
-    model: z.string().min(1, 'Model is required').max(80),
+    make: requiredTrimmedString('Make', 80),
+    model: requiredTrimmedString('Model', 80),
     year: z.coerce.number().min(1980).max(2100).optional(),
     vehicleType: z.nativeEnum(VehicleType),
     fuelType: z.nativeEnum(FuelType),
-    color: z.string().optional(),
+    color: optionalTrimmedString(FORM_LIMITS.name),
     seatingCapacity: z.coerce.number().min(1).max(200).optional(),
     maxCapacity: z.coerce
       .number({ invalid_type_error: 'Maximum load capacity is required' })
       .min(1, 'Maximum load capacity must be at least 1 kg')
       .max(500, 'Maximum load capacity must not exceed 500 kg'),
-    mileage: z.coerce.number().min(0),
+    mileage: z.coerce.number().min(0, 'Mileage cannot be negative.'),
     purchaseDate: z.string().optional(),
-    registrationExpiryDate: z.string().min(1, 'Registration expiry is required'),
-    insuranceExpiryDate: z.string().min(1, 'Insurance expiry is required'),
-    fitnessCertificateExpiryDate: z.string().min(1, 'Fitness expiry is required'),
+    registrationExpiryDate: z.string().min(1, 'Registration expiry date is required.'),
+    insuranceExpiryDate: z.string().min(1, 'Insurance expiry date is required.'),
+    fitnessCertificateExpiryDate: z.string().min(1, 'Fitness certificate expiry is required.'),
     lastServiceDate: z.string().optional(),
     nextServiceDueDate: z.string().optional(),
-    depotCity: z.string().optional(),
+    depotCity: optionalTrimmedString(FORM_LIMITS.name),
     depotState: z.string().optional(),
     country: z.string().optional(),
-    photo: z.string().optional(),
-    remarks: z.string().max(500).optional(),
+    photo: urlField('Photo URL'),
+    remarks: optionalTrimmedString(FORM_LIMITS.textarea),
     status: z.nativeEnum(VehicleStatus).optional(),
   })
   .superRefine((data, ctx) => {
@@ -160,20 +172,6 @@ const emptyDefaults: VehicleFormSchema = {
   status: VehicleStatus.AVAILABLE,
 };
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <motion.section
-      variants={staggerItem}
-      className="space-y-4 rounded-xl border border-border bg-card/40 p-4 md:p-5"
-    >
-      <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
-        {title}
-      </h2>
-      <div className="grid gap-4 md:grid-cols-2">{children}</div>
-    </motion.section>
-  );
-}
-
 export function VehicleForm({
   defaultValues,
   submitting,
@@ -181,17 +179,7 @@ export function VehicleForm({
   onSubmit,
   onCancel,
 }: VehicleFormProps) {
-  const sidebarCollapsed = useUiStore((s) => s.sidebarCollapsed);
   const reduceMotion = useSafeReducedMotion();
-  const [isDesktop, setIsDesktop] = useState(false);
-
-  useEffect(() => {
-    const media = window.matchMedia('(min-width: 768px)');
-    const sync = () => setIsDesktop(media.matches);
-    sync();
-    media.addEventListener('change', sync);
-    return () => media.removeEventListener('change', sync);
-  }, []);
 
   const {
     register,
@@ -200,45 +188,43 @@ export function VehicleForm({
     setError,
     watch,
     control,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<VehicleFormSchema>({
+    ...DEFAULT_FORM_OPTIONS,
     resolver: zodResolver(vehicleFormSchema),
     defaultValues: { ...emptyDefaults, ...defaultValues },
   });
 
-  const clean = (values: VehicleFormSchema): VehicleFormValues => {
-    const optional = (v?: string) => (v && v.trim() ? v.trim() : undefined);
-    return {
-      ...values,
-      vehicleId: values.vehicleId.trim(),
-      registrationNumber: values.registrationNumber.trim(),
-      vin: optional(values.vin),
-      make: values.make.trim(),
-      model: values.model.trim(),
-      color: optional(values.color),
-      maxCapacity: Number(values.maxCapacity),
-      purchaseDate: optional(values.purchaseDate),
-      lastServiceDate: optional(values.lastServiceDate),
-      nextServiceDueDate: optional(values.nextServiceDueDate),
-      depotCity: optional(values.depotCity),
-      depotState: optional(values.depotState),
-      country: optional(values.country),
-      photo: optional(values.photo),
-      remarks: optional(values.remarks),
-    };
-  };
+  useUnsavedChangesWarning(isDirty, !submitting);
 
-  const actionBarLeft = isDesktop ? (sidebarCollapsed ? 72 : 260) : 0;
+  const clean = (values: VehicleFormSchema): VehicleFormValues => ({
+    ...values,
+    vehicleId: values.vehicleId.trim(),
+    registrationNumber: values.registrationNumber.trim(),
+    vin: optionalString(values.vin),
+    make: values.make.trim(),
+    model: values.model.trim(),
+    color: optionalString(values.color),
+    maxCapacity: Number(values.maxCapacity),
+    purchaseDate: optionalString(values.purchaseDate),
+    lastServiceDate: optionalString(values.lastServiceDate),
+    nextServiceDueDate: optionalString(values.nextServiceDueDate),
+    depotCity: optionalString(values.depotCity),
+    depotState: optionalString(values.depotState),
+    country: optionalString(values.country),
+    photo: optionalString(values.photo),
+    remarks: optionalString(values.remarks),
+  });
 
   return (
     <>
       <motion.form
         id="vehicle-form"
         className="space-y-5 pb-28"
-        noValidate
         variants={staggerContainer}
         initial={reduceMotion ? false : 'hidden'}
         animate="show"
+        noValidate
         onSubmit={handleSubmit(async (values) => {
           try {
             await onSubmit(clean(values));
@@ -252,33 +238,77 @@ export function VehicleForm({
           }
         })}
       >
-        <Section title="Vehicle Identity">
-          <FormField label="Vehicle ID" htmlFor="vehicleId" error={errors.vehicleId?.message}>
-            <Input id="vehicleId" placeholder="VH-1001" {...register('vehicleId')} />
+        <FormSection title="Vehicle Identity">
+          <FormField label="Vehicle ID" htmlFor="vehicleId" required error={errors.vehicleId?.message}>
+            <Input
+              id="vehicleId"
+              maxLength={FORM_LIMITS.employeeCode}
+              placeholder={PLACEHOLDERS.vehicleId}
+              {...enhanceRegister(register('vehicleId'), {
+                transform: (v) => uppercase(sanitizeTextInput(v), FORM_LIMITS.employeeCode),
+              })}
+            />
           </FormField>
           <FormField
             label="Registration Number"
             htmlFor="registrationNumber"
+            required
             error={errors.registrationNumber?.message}
           >
-            <Input id="registrationNumber" {...register('registrationNumber')} />
+            <Input
+              id="registrationNumber"
+              maxLength={FORM_LIMITS.vehicleNumber}
+              placeholder={PLACEHOLDERS.vehicleNumber}
+              {...enhanceRegister(register('registrationNumber'), {
+                transform: (v) => uppercase(sanitizeTextInput(v), FORM_LIMITS.vehicleNumber),
+              })}
+            />
           </FormField>
           <FormField label="VIN" htmlFor="vin" error={errors.vin?.message}>
-            <Input id="vin" {...register('vin')} />
+            <Input
+              id="vin"
+              maxLength={17}
+              placeholder="Example: 1HGCM82633A004352 (optional)"
+              {...enhanceRegister(register('vin'), {
+                transform: (v) => uppercase(sanitizeTextInput(v), 17),
+              })}
+            />
           </FormField>
-          <FormField label="Make" htmlFor="make" error={errors.make?.message}>
-            <Input id="make" {...register('make')} />
+          <FormField label="Make" htmlFor="make" required error={errors.make?.message}>
+            <Input
+              id="make"
+              maxLength={80}
+              placeholder="Example: Tata"
+              {...enhanceRegister(register('make'), {
+                transform: (v) => sanitizeTextInput(v, 80),
+              })}
+            />
           </FormField>
-          <FormField label="Model" htmlFor="model" error={errors.model?.message}>
-            <Input id="model" {...register('model')} />
+          <FormField label="Model" htmlFor="model" required error={errors.model?.message}>
+            <Input
+              id="model"
+              maxLength={80}
+              placeholder="Example: Starbus Ultra"
+              {...enhanceRegister(register('model'), {
+                transform: (v) => sanitizeTextInput(v, 80),
+              })}
+            />
           </FormField>
           <FormField label="Year" htmlFor="year" error={errors.year?.message}>
-            <Input id="year" type="number" {...register('year')} />
+            <Input
+              id="year"
+              type="number"
+              inputMode="numeric"
+              min={1980}
+              max={2100}
+              placeholder="Example: 2022"
+              {...register('year')}
+            />
           </FormField>
-        </Section>
+        </FormSection>
 
-        <Section title="Specifications">
-          <FormField label="Vehicle Type" htmlFor="vehicleType" error={errors.vehicleType?.message}>
+        <FormSection title="Specifications">
+          <FormField label="Vehicle Type" htmlFor="vehicleType" required error={errors.vehicleType?.message}>
             <Select
               value={watch('vehicleType')}
               onValueChange={(value) =>
@@ -297,7 +327,7 @@ export function VehicleForm({
               </SelectContent>
             </Select>
           </FormField>
-          <FormField label="Fuel Type" htmlFor="fuelType" error={errors.fuelType?.message}>
+          <FormField label="Fuel Type" htmlFor="fuelType" required error={errors.fuelType?.message}>
             <Select
               value={watch('fuelType')}
               onValueChange={(value) =>
@@ -317,30 +347,40 @@ export function VehicleForm({
             </Select>
           </FormField>
           <FormField label="Color" htmlFor="color" error={errors.color?.message}>
-            <Input id="color" {...register('color')} />
+            <Input id="color" maxLength={FORM_LIMITS.name} placeholder="Example: White" {...register('color')} />
           </FormField>
           <FormField
             label="Seating Capacity"
             htmlFor="seatingCapacity"
             error={errors.seatingCapacity?.message}
           >
-            <Input id="seatingCapacity" type="number" {...register('seatingCapacity')} />
+            <Input id="seatingCapacity" type="number" min={1} {...register('seatingCapacity')} />
           </FormField>
           <FormField
             label="Maximum Load Capacity (kg)"
             htmlFor="maxCapacity"
+            required
             error={errors.maxCapacity?.message}
           >
             <Input
               id="maxCapacity"
               type="number"
               step={1}
+              min={1}
+              max={500}
               placeholder="e.g. 500"
               {...register('maxCapacity')}
             />
           </FormField>
           <FormField label="Mileage (km)" htmlFor="mileage" error={errors.mileage?.message}>
-            <Input id="mileage" type="number" {...register('mileage')} />
+            <Input
+              id="mileage"
+              type="number"
+              inputMode="numeric"
+              min={0}
+              placeholder={PLACEHOLDERS.odometer}
+              {...register('mileage')}
+            />
           </FormField>
           <FormField label="Purchase Date" htmlFor="purchaseDate" error={errors.purchaseDate?.message}>
             <Controller
@@ -356,12 +396,14 @@ export function VehicleForm({
               )}
             />
           </FormField>
-        </Section>
+        </FormSection>
 
-        <Section title="Compliance">
+        <FormSection title="Compliance">
           <FormField
             label="Registration Expiry"
             htmlFor="registrationExpiryDate"
+            required
+            description="Vehicle cannot operate after registration expiry."
             error={errors.registrationExpiryDate?.message}
           >
             <Controller
@@ -380,6 +422,7 @@ export function VehicleForm({
           <FormField
             label="Insurance Expiry"
             htmlFor="insuranceExpiryDate"
+            required
             error={errors.insuranceExpiryDate?.message}
           >
             <Controller
@@ -398,6 +441,7 @@ export function VehicleForm({
           <FormField
             label="Fitness Certificate Expiry"
             htmlFor="fitnessCertificateExpiryDate"
+            required
             error={errors.fitnessCertificateExpiryDate?.message}
           >
             <Controller
@@ -432,9 +476,9 @@ export function VehicleForm({
               </SelectContent>
             </Select>
           </FormField>
-        </Section>
+        </FormSection>
 
-        <Section title="Service & Depot">
+        <FormSection title="Service & Depot">
           <FormField
             label="Last Service Date"
             htmlFor="lastServiceDate"
@@ -472,38 +516,61 @@ export function VehicleForm({
             />
           </FormField>
           <FormField label="Depot City" htmlFor="depotCity" error={errors.depotCity?.message}>
-            <Input id="depotCity" {...register('depotCity')} />
+            <Input id="depotCity" maxLength={FORM_LIMITS.name} placeholder={PLACEHOLDERS.city} {...register('depotCity')} />
           </FormField>
           <FormField label="Depot State" htmlFor="depotState" error={errors.depotState?.message}>
-            <Input id="depotState" {...register('depotState')} />
+            <Select
+              value={watch('depotState') || undefined}
+              onValueChange={(value) => setValue('depotState', value, { shouldValidate: true })}
+            >
+              <SelectTrigger id="depotState">
+                <SelectValue placeholder="Select state" />
+              </SelectTrigger>
+              <SelectContent>
+                {INDIAN_STATES.map((state) => (
+                  <SelectItem key={state} value={state}>
+                    {state}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </FormField>
           <FormField label="Country" htmlFor="country" error={errors.country?.message}>
-            <Input id="country" {...register('country')} />
+            <Select
+              value={watch('country') || undefined}
+              onValueChange={(value) => setValue('country', value, { shouldValidate: true })}
+            >
+              <SelectTrigger id="country">
+                <SelectValue placeholder="Select country" />
+              </SelectTrigger>
+              <SelectContent>
+                {COUNTRIES.map((country) => (
+                  <SelectItem key={country} value={country}>
+                    {country}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </FormField>
-          <FormField label="Remarks" htmlFor="remarks" error={errors.remarks?.message}>
-            <Textarea id="remarks" rows={3} {...register('remarks')} />
+          <FormField label="Remarks" htmlFor="remarks" error={errors.remarks?.message} className="md:col-span-2">
+            <CharacterCountTextarea
+              id="remarks"
+              rows={3}
+              maxLength={FORM_LIMITS.textarea}
+              placeholder={PLACEHOLDERS.notes}
+              {...register('remarks')}
+            />
           </FormField>
-        </Section>
+        </FormSection>
       </motion.form>
 
-      <motion.div
-        className="fixed bottom-0 right-0 z-30 border-t border-border bg-background/95 px-4 py-3 backdrop-blur"
-        style={{ left: actionBarLeft }}
-        variants={actionBarSlide}
-        initial={reduceMotion ? false : 'hidden'}
-        animate="show"
-      >
-        <div className="mx-auto flex max-w-5xl justify-end gap-2">
-          {onCancel ? (
-            <Button type="button" variant="outline" onClick={onCancel} disabled={submitting}>
-              Cancel
-            </Button>
-          ) : null}
-          <Button type="submit" form="vehicle-form" loading={submitting}>
-            {submitLabel}
-          </Button>
-        </div>
-      </motion.div>
+      <FormActionBar
+        formId="vehicle-form"
+        submitting={submitting}
+        submitLabel={submitLabel}
+        onCancel={onCancel}
+        isDirty={isDirty}
+      />
     </>
   );
 }

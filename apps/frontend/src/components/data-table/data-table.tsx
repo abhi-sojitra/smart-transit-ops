@@ -67,7 +67,7 @@ export function DataTable<TData, TValue>({
       <SearchInput
         placeholder={searchPlaceholder}
         value={globalFilter}
-        onChange={(e) => setGlobalFilter(e.target.value)}
+        onChange={(value) => setGlobalFilter(value)}
         containerClassName="max-w-sm"
       />
       <div className="overflow-hidden rounded-xl border border-border">

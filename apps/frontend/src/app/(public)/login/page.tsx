@@ -8,16 +8,21 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { AxiosError } from 'axios';
 import { toast } from 'sonner';
 import { APP_NAME } from '@/constants/nav';
+import { DEFAULT_FORM_OPTIONS, FORM_LIMITS, PLACEHOLDERS } from '@/constants/form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { FormField } from '@/components/forms/form-field';
 import { useAuthStore } from '@/store';
 import { authApi } from '@/services/auth';
+import { emailField } from '@/utils/form-validation';
+import { sanitizeTextInput } from '@/utils/form-sanitize';
+import { enhanceRegister } from '@/utils/form-register';
 
 const loginSchema = z.object({
-  email: z.string().email('Enter a valid email'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
+  email: emailField,
+  password: z.string().min(8, 'Password must be at least 8 characters.'),
   remember: z.boolean().optional(),
 });
 
@@ -36,6 +41,7 @@ export default function LoginPage() {
     setValue,
     watch,
   } = useForm<LoginValues>({
+    ...DEFAULT_FORM_OPTIONS,
     resolver: zodResolver(loginSchema),
     defaultValues: {
       email: 'admin@transitops.com',
@@ -101,29 +107,36 @@ export default function LoginPage() {
           </p>
 
           <form className="mt-8 space-y-5" onSubmit={handleSubmit(onSubmit)} noValidate>
-            <FormField label="Email" htmlFor="email" error={errors.email?.message}>
+            <FormField label="Email" htmlFor="email" required error={errors.email?.message}>
               <Input
                 id="email"
                 type="email"
-                placeholder="you@company.com"
-                className="border-slate-700 bg-slate-900 text-slate-50"
-                {...register('email')}
+                inputMode="email"
+                autoComplete="email"
+                maxLength={FORM_LIMITS.email}
+                placeholder={PLACEHOLDERS.email}
+                className="border-slate-700 bg-slate-900 text-slate-50 placeholder:text-slate-500"
+                {...enhanceRegister(register('email'), {
+                  transform: (v) => sanitizeTextInput(v, FORM_LIMITS.email).toLowerCase(),
+                })}
               />
             </FormField>
 
-            <FormField label="Password" htmlFor="password" error={errors.password?.message}>
-              <Input
+            <FormField label="Password" htmlFor="password" required error={errors.password?.message}>
+              <PasswordInput
                 id="password"
-                type="password"
-                placeholder="••••••••"
-                className="border-slate-700 bg-slate-900 text-slate-50"
+                autoComplete="current-password"
+                maxLength={FORM_LIMITS.password}
+                placeholder={PLACEHOLDERS.password}
+                className="border-slate-700 bg-slate-900 text-slate-50 placeholder:text-slate-500"
                 {...register('password')}
               />
             </FormField>
 
             <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2 text-sm text-slate-300">
+              <label htmlFor="remember" className="flex items-center gap-2 text-sm text-slate-300">
                 <Checkbox
+                  id="remember"
                   checked={watch('remember')}
                   onCheckedChange={(checked) => setValue('remember', Boolean(checked))}
                 />

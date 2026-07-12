@@ -8,7 +8,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { CargoType } from '@transitops/shared-types';
 import { FormField } from '@/components/forms/form-field';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { InputAffix } from '@/components/ui/input-affix';
+import { CharacterCountTextarea } from '@/components/ui/character-count-textarea';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -20,21 +21,26 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { VehicleSelect } from '@/components/fleet/vehicle-select';
 import { useAvailableDrivers } from '@/hooks/use-trips';
+import { DEFAULT_FORM_OPTIONS, FORM_LIMITS, PLACEHOLDERS } from '@/constants/form';
+import { useUnsavedChangesWarning } from '@/hooks/use-unsaved-changes';
 import type { CreateTripInput } from '@/types/trip';
+import { positiveDecimal, sanitizeTextInput } from '@/utils/form-sanitize';
+import { enhanceRegister } from '@/utils/form-register';
+import { nonNegativeAmountField, positiveAmountField, requiredTrimmedString } from '@/utils/form-validation';
 
 const tripFormBaseSchema = z.object({
-  source: z.string().min(2, 'Source is required'),
-  destination: z.string().min(2, 'Destination is required'),
-  vehicleId: z.string().min(1, 'Vehicle is required'),
-  driverId: z.string().min(1, 'Driver is required'),
-  cargoName: z.string().min(1, 'Cargo name is required'),
-  cargoWeight: z.coerce.number().min(0, 'Weight must be >= 0'),
-  cargoType: z.nativeEnum(CargoType),
-  plannedDistance: z.coerce.number().min(1, 'Distance is required'),
-  plannedStartDate: z.string().min(1, 'Start date is required'),
-  plannedEndDate: z.string().min(1, 'End date is required'),
-  estimatedRevenue: z.coerce.number().min(0, 'Revenue must be >= 0'),
-  notes: z.string().optional(),
+  source: requiredTrimmedString('Source location', FORM_LIMITS.text),
+  destination: requiredTrimmedString('Destination location', FORM_LIMITS.text),
+  vehicleId: z.string().min(1, 'Vehicle is required.'),
+  driverId: z.string().min(1, 'Driver is required.'),
+  cargoName: requiredTrimmedString('Cargo name', FORM_LIMITS.text),
+  cargoWeight: positiveAmountField('Cargo weight'),
+  cargoType: z.nativeEnum(CargoType, { errorMap: () => ({ message: 'Cargo type is required.' }) }),
+  plannedDistance: positiveAmountField('Planned distance'),
+  plannedStartDate: z.string().min(1, 'Planned start date and time is required.'),
+  plannedEndDate: z.string().min(1, 'Planned end date and time is required.'),
+  estimatedRevenue: nonNegativeAmountField('Estimated revenue'),
+  notes: z.string().max(FORM_LIMITS.textarea).optional(),
 });
 
 export type TripFormValues = z.infer<typeof tripFormBaseSchema>;
@@ -42,7 +48,7 @@ export type TripFormValues = z.infer<typeof tripFormBaseSchema>;
 function createTripSchema(getCapacity: () => number | null | undefined) {
   return tripFormBaseSchema
     .refine((values) => new Date(values.plannedEndDate) >= new Date(values.plannedStartDate), {
-      message: 'End date must be after start date',
+      message: 'Planned end must be on or after the planned start.',
       path: ['plannedEndDate'],
     })
     .superRefine((values, ctx) => {
@@ -72,6 +78,7 @@ interface TripFormProps {
   submitLabel?: string;
   loading?: boolean;
   onSubmit: (values: CreateTripInput) => void;
+  onCancel?: () => void;
 }
 
 function toLocalInput(value?: string) {
@@ -86,7 +93,13 @@ function assetId(asset: { id?: string; _id?: string }): string {
   return String(asset.id ?? asset._id ?? '');
 }
 
-export function TripForm({ defaultValues, submitLabel = 'Save trip', loading, onSubmit }: TripFormProps) {
+export function TripForm({
+  defaultValues,
+  submitLabel = 'Save trip',
+  loading,
+  onSubmit,
+  onCancel,
+}: TripFormProps) {
   const {
     data: drivers = [],
     isLoading: loadingDrivers,
@@ -107,6 +120,7 @@ export function TripForm({ defaultValues, submitLabel = 'Save trip', loading, on
     watch,
     formState: { errors, isDirty },
   } = useForm<TripFormValues>({
+    ...DEFAULT_FORM_OPTIONS,
     resolver: zodResolver(schema),
     defaultValues: {
       source: defaultValues?.source ?? '',
@@ -114,9 +128,9 @@ export function TripForm({ defaultValues, submitLabel = 'Save trip', loading, on
       vehicleId: defaultValues?.vehicleId ?? '',
       driverId: defaultValues?.driverId ?? '',
       cargoName: defaultValues?.cargoName ?? '',
-      cargoWeight: defaultValues?.cargoWeight ?? 0,
+      cargoWeight: defaultValues?.cargoWeight ?? (undefined as unknown as number),
       cargoType: defaultValues?.cargoType ?? CargoType.GENERAL,
-      plannedDistance: defaultValues?.plannedDistance ?? 100,
+      plannedDistance: defaultValues?.plannedDistance ?? (undefined as unknown as number),
       plannedStartDate: toLocalInput(defaultValues?.plannedStartDate),
       plannedEndDate: toLocalInput(defaultValues?.plannedEndDate),
       estimatedRevenue: defaultValues?.estimatedRevenue ?? 0,
@@ -124,19 +138,12 @@ export function TripForm({ defaultValues, submitLabel = 'Save trip', loading, on
     },
   });
 
-  useEffect(() => {
-    const onBeforeUnload = (event: BeforeUnloadEvent) => {
-      if (!isDirty || loading) return;
-      event.preventDefault();
-      event.returnValue = '';
-    };
-    window.addEventListener('beforeunload', onBeforeUnload);
-    return () => window.removeEventListener('beforeunload', onBeforeUnload);
-  }, [isDirty, loading]);
+  useUnsavedChangesWarning(isDirty, !loading);
 
   const selectedVehicleId = watch('vehicleId');
   const selectedDriverId = watch('driverId');
   const plannedStartDate = watch('plannedStartDate');
+  const cargoWeight = watch('cargoWeight');
   const minStartDateTime = toLocalInput(new Date().toISOString());
   const minEndDateTime = plannedStartDate || minStartDateTime;
 
@@ -149,9 +156,20 @@ export function TripForm({ defaultValues, submitLabel = 'Save trip', loading, on
     }
   }, [drivers, driversReady, loadingDrivers, selectedDriverId, setValue]);
 
+  useEffect(() => {
+    if (
+      selectedVehicleCapacity != null &&
+      cargoWeight != null &&
+      Number(cargoWeight) > selectedVehicleCapacity
+    ) {
+      setValue('cargoWeight', selectedVehicleCapacity, { shouldValidate: true });
+    }
+  }, [selectedVehicleCapacity, cargoWeight, setValue]);
+
   return (
     <form
       className="space-y-6"
+      noValidate
       onSubmit={handleSubmit((values) =>
         onSubmit({
           ...values,
@@ -159,7 +177,6 @@ export function TripForm({ defaultValues, submitLabel = 'Save trip', loading, on
           plannedEndDate: new Date(values.plannedEndDate).toISOString(),
         }),
       )}
-      noValidate
     >
       <Card>
         <CardHeader>
@@ -167,15 +184,31 @@ export function TripForm({ defaultValues, submitLabel = 'Save trip', loading, on
           <CardDescription>Route and planned schedule for this dispatch.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
-          <FormField label="Source *" htmlFor="source" error={errors.source?.message}>
-            <Input id="source" autoFocus placeholder="Chicago, IL" {...register('source')} />
+          <FormField label="Source" htmlFor="source" required error={errors.source?.message}>
+            <Input
+              id="source"
+              autoFocus
+              maxLength={FORM_LIMITS.text}
+              placeholder={PLACEHOLDERS.source}
+              {...enhanceRegister(register('source'), {
+                transform: (v) => sanitizeTextInput(v, FORM_LIMITS.text),
+              })}
+            />
           </FormField>
-          <FormField label="Destination *" htmlFor="destination" error={errors.destination?.message}>
-            <Input id="destination" placeholder="Detroit, MI" {...register('destination')} />
+          <FormField label="Destination" htmlFor="destination" required error={errors.destination?.message}>
+            <Input
+              id="destination"
+              maxLength={FORM_LIMITS.text}
+              placeholder={PLACEHOLDERS.destination}
+              {...enhanceRegister(register('destination'), {
+                transform: (v) => sanitizeTextInput(v, FORM_LIMITS.text),
+              })}
+            />
           </FormField>
           <FormField
-            label="Planned start *"
+            label="Planned Start"
             htmlFor="plannedStartDate"
+            required
             error={errors.plannedStartDate?.message}
           >
             <Input
@@ -185,7 +218,12 @@ export function TripForm({ defaultValues, submitLabel = 'Save trip', loading, on
               {...register('plannedStartDate')}
             />
           </FormField>
-          <FormField label="Planned end *" htmlFor="plannedEndDate" error={errors.plannedEndDate?.message}>
+          <FormField
+            label="Planned End"
+            htmlFor="plannedEndDate"
+            required
+            error={errors.plannedEndDate?.message}
+          >
             <Input
               id="plannedEndDate"
               type="datetime-local"
@@ -202,7 +240,7 @@ export function TripForm({ defaultValues, submitLabel = 'Save trip', loading, on
           <CardDescription>Only available assets can be assigned.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
-          <FormField label="Vehicle *" htmlFor="vehicleId" error={errors.vehicleId?.message}>
+          <FormField label="Vehicle" htmlFor="vehicleId" required error={errors.vehicleId?.message}>
             <VehicleSelect
               id="vehicleId"
               source="available"
@@ -219,11 +257,10 @@ export function TripForm({ defaultValues, submitLabel = 'Save trip', loading, on
             />
           </FormField>
           <FormField
-            label="Driver *"
+            label="Driver"
             htmlFor="driverId"
-            error={
-              errors.driverId?.message ?? (driversError ? 'Failed to load drivers' : undefined)
-            }
+            required
+            error={errors.driverId?.message ?? (driversError ? 'Failed to load drivers.' : undefined)}
             description={
               !loadingDrivers && !driversError && drivers.length === 0
                 ? 'No free drivers right now. Cancel or complete an active trip first.'
@@ -264,7 +301,7 @@ export function TripForm({ defaultValues, submitLabel = 'Save trip', loading, on
           </FormField>
           {selectedVehicleCapacity != null ? (
             <p className="text-xs text-muted-foreground md:col-span-2">
-              Selected capacity: {selectedVehicleCapacity}. Cargo weight cannot exceed this value.
+              Selected capacity: {selectedVehicleCapacity} kg. Cargo weight cannot exceed this value.
             </p>
           ) : null}
         </CardContent>
@@ -275,13 +312,29 @@ export function TripForm({ defaultValues, submitLabel = 'Save trip', loading, on
           <CardTitle>Cargo</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-3">
-          <FormField label="Cargo name *" htmlFor="cargoName" error={errors.cargoName?.message}>
-            <Input id="cargoName" {...register('cargoName')} />
+          <FormField label="Cargo Name" htmlFor="cargoName" required error={errors.cargoName?.message}>
+            <Input
+              id="cargoName"
+              maxLength={FORM_LIMITS.text}
+              placeholder={PLACEHOLDERS.cargoName}
+              {...enhanceRegister(register('cargoName'), {
+                transform: (v) => sanitizeTextInput(v, FORM_LIMITS.text),
+              })}
+            />
           </FormField>
-          <FormField label="Cargo weight *" htmlFor="cargoWeight" error={errors.cargoWeight?.message}>
-            <Input id="cargoWeight" type="number" {...register('cargoWeight')} />
+          <FormField label="Cargo Weight" htmlFor="cargoWeight" required error={errors.cargoWeight?.message}>
+            <InputAffix
+              id="cargoWeight"
+              suffix="kg"
+              inputMode="decimal"
+              max={selectedVehicleCapacity ?? undefined}
+              placeholder={PLACEHOLDERS.weight}
+              {...enhanceRegister(register('cargoWeight'), {
+                transform: (v) => positiveDecimal(String(v)),
+              })}
+            />
           </FormField>
-          <FormField label="Cargo type *" htmlFor="cargoType" error={errors.cargoType?.message}>
+          <FormField label="Cargo Type" htmlFor="cargoType" required error={errors.cargoType?.message}>
             <Select
               value={watch('cargoType')}
               onValueChange={(value) =>
@@ -289,7 +342,7 @@ export function TripForm({ defaultValues, submitLabel = 'Save trip', loading, on
               }
             >
               <SelectTrigger id="cargoType">
-                <SelectValue />
+                <SelectValue placeholder="Select cargo type" />
               </SelectTrigger>
               <SelectContent>
                 {Object.values(CargoType).map((type) => (
@@ -309,18 +362,36 @@ export function TripForm({ defaultValues, submitLabel = 'Save trip', loading, on
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
           <FormField
-            label="Planned distance (mi) *"
+            label="Planned Distance"
             htmlFor="plannedDistance"
+            required
             error={errors.plannedDistance?.message}
           >
-            <Input id="plannedDistance" type="number" {...register('plannedDistance')} />
+            <InputAffix
+              id="plannedDistance"
+              suffix="km"
+              inputMode="decimal"
+              placeholder={PLACEHOLDERS.distance}
+              {...enhanceRegister(register('plannedDistance'), {
+                transform: (v) => positiveDecimal(String(v)),
+              })}
+            />
           </FormField>
           <FormField
-            label="Estimated revenue *"
+            label="Estimated Revenue"
             htmlFor="estimatedRevenue"
+            required
             error={errors.estimatedRevenue?.message}
           >
-            <Input id="estimatedRevenue" type="number" {...register('estimatedRevenue')} />
+            <InputAffix
+              id="estimatedRevenue"
+              prefix="₹"
+              inputMode="decimal"
+              placeholder={PLACEHOLDERS.amount}
+              {...enhanceRegister(register('estimatedRevenue'), {
+                transform: (v) => positiveDecimal(String(v)),
+              })}
+            />
           </FormField>
         </CardContent>
       </Card>
@@ -331,7 +402,13 @@ export function TripForm({ defaultValues, submitLabel = 'Save trip', loading, on
         </CardHeader>
         <CardContent>
           <FormField label="Notes" htmlFor="notes" description="Optional dispatch instructions.">
-            <Textarea id="notes" rows={4} {...register('notes')} />
+            <CharacterCountTextarea
+              id="notes"
+              rows={4}
+              maxLength={FORM_LIMITS.textarea}
+              placeholder={PLACEHOLDERS.notes}
+              {...register('notes')}
+            />
           </FormField>
         </CardContent>
       </Card>
@@ -340,9 +417,16 @@ export function TripForm({ defaultValues, submitLabel = 'Save trip', loading, on
         <p className="text-xs text-muted-foreground">
           {isDirty ? 'You have unsaved changes.' : 'All changes saved.'}
         </p>
-        <Button type="submit" loading={loading} disabled={loading}>
-          {submitLabel}
-        </Button>
+        <div className="flex gap-2">
+          {onCancel ? (
+            <Button type="button" variant="outline" onClick={onCancel} disabled={loading}>
+              Cancel
+            </Button>
+          ) : null}
+          <Button type="submit" loading={loading} disabled={loading}>
+            {submitLabel}
+          </Button>
+        </div>
       </div>
     </form>
   );

@@ -1,14 +1,15 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { motion, useReducedMotion } from 'framer-motion';
 import { ExpenseStatus, ExpenseType } from '@transitops/shared-types';
 import { FormField } from '@/components/forms/form-field';
+import { FormSection } from '@/components/forms/form-section';
+import { FormActionBar } from '@/components/forms/form-action-bar';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Button } from '@/components/ui/button';
+import { InputAffix } from '@/components/ui/input-affix';
+import { CharacterCountTextarea } from '@/components/ui/character-count-textarea';
 import { DatePicker } from '@/components/ui/date-picker';
 import { VehicleSelect } from '@/components/fleet/vehicle-select';
 import {
@@ -18,10 +19,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useUiStore } from '@/store';
-import { actionBarSlide, staggerContainer, staggerItem } from '@/components/drivers/motion';
+import { staggerContainer } from '@/components/drivers/motion';
+import { DEFAULT_FORM_OPTIONS, FORM_LIMITS, PLACEHOLDERS } from '@/constants/form';
+import { useUnsavedChangesWarning } from '@/hooks/use-unsaved-changes';
 import { expenseFormSchema, type ExpenseFormValues } from '@/types/fuel-expense';
 import { toDateInput } from '@/utils/date';
+import { optionalString, positiveDecimal, sanitizeTextInput } from '@/utils/form-sanitize';
+import { enhanceRegister } from '@/utils/form-register';
 
 interface ExpenseFormProps {
   defaultValues?: Partial<ExpenseFormValues>;
@@ -39,26 +43,12 @@ const emptyDefaults: ExpenseFormValues = {
   expenseType: ExpenseType.OTHER,
   title: '',
   description: '',
-  amount: 0,
+  amount: undefined as unknown as number,
   expenseDate: toDateInput(new Date()),
   receiptImage: '',
   status: ExpenseStatus.PENDING,
   notes: '',
 };
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <motion.section
-      variants={staggerItem}
-      className="space-y-4 rounded-xl border border-border bg-card/40 p-4 md:p-5"
-    >
-      <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
-        {title}
-      </h2>
-      <div className="grid gap-4 md:grid-cols-2">{children}</div>
-    </motion.section>
-  );
-}
 
 export function ExpenseForm({
   defaultValues,
@@ -68,17 +58,7 @@ export function ExpenseForm({
   onSubmit,
   onCancel,
 }: ExpenseFormProps) {
-  const sidebarCollapsed = useUiStore((s) => s.sidebarCollapsed);
   const reduceMotion = useReducedMotion();
-  const [isDesktop, setIsDesktop] = useState(false);
-
-  useEffect(() => {
-    const media = window.matchMedia('(min-width: 768px)');
-    const sync = () => setIsDesktop(media.matches);
-    sync();
-    media.addEventListener('change', sync);
-    return () => media.removeEventListener('change', sync);
-  }, []);
 
   const {
     register,
@@ -86,26 +66,28 @@ export function ExpenseForm({
     setValue,
     watch,
     control,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<ExpenseFormValues>({
+    ...DEFAULT_FORM_OPTIONS,
     resolver: zodResolver(expenseFormSchema),
     defaultValues: { ...emptyDefaults, ...defaultValues },
   });
 
+  useUnsavedChangesWarning(isDirty, !submitting);
+
   const expenseType = watch('expenseType');
   const status = watch('status');
   const vehicleId = watch('vehicleId');
-  const actionBarLeft = isDesktop ? (sidebarCollapsed ? 72 : 260) : 0;
 
   const clean = (values: ExpenseFormValues): ExpenseFormValues => ({
     ...values,
     vehicleId: values.vehicleId.trim(),
-    tripId: values.tripId?.trim() || undefined,
-    driverId: values.driverId?.trim() || undefined,
+    tripId: optionalString(values.tripId),
+    driverId: optionalString(values.driverId),
     title: values.title.trim(),
-    description: values.description?.trim() || undefined,
-    receiptImage: values.receiptImage?.trim() || undefined,
-    notes: values.notes?.trim() || undefined,
+    description: optionalString(values.description),
+    receiptImage: optionalString(values.receiptImage),
+    notes: optionalString(values.notes),
   });
 
   return (
@@ -116,12 +98,13 @@ export function ExpenseForm({
         variants={staggerContainer}
         initial={reduceMotion ? false : 'hidden'}
         animate="show"
+        noValidate
         onSubmit={handleSubmit(async (values) => {
           await onSubmit(clean(values));
         })}
       >
-        <Section title="Assignment">
-          <FormField label="Vehicle" htmlFor="vehicleId" error={errors.vehicleId?.message}>
+        <FormSection title="Assignment">
+          <FormField label="Vehicle" htmlFor="vehicleId" required error={errors.vehicleId?.message}>
             <VehicleSelect
               id="vehicleId"
               value={vehicleId}
@@ -130,21 +113,40 @@ export function ExpenseForm({
             />
           </FormField>
           <FormField label="Trip ID" htmlFor="tripId" error={errors.tripId?.message}>
-            <Input id="tripId" placeholder="TR-2001 (optional)" {...register('tripId')} />
+            <Input
+              id="tripId"
+              maxLength={FORM_LIMITS.text}
+              placeholder={PLACEHOLDERS.tripId}
+              {...enhanceRegister(register('tripId'), {
+                transform: (v) => sanitizeTextInput(v, FORM_LIMITS.text),
+              })}
+            />
           </FormField>
           <FormField label="Driver ID" htmlFor="driverId" error={errors.driverId?.message}>
-            <Input id="driverId" placeholder="DR-3001 (optional)" {...register('driverId')} />
+            <Input
+              id="driverId"
+              maxLength={FORM_LIMITS.text}
+              placeholder={PLACEHOLDERS.driverId}
+              {...enhanceRegister(register('driverId'), {
+                transform: (v) => sanitizeTextInput(v, FORM_LIMITS.text),
+              })}
+            />
           </FormField>
-        </Section>
+        </FormSection>
 
-        <Section title="Expense Details">
-          <FormField label="Expense Type" htmlFor="expenseType" error={errors.expenseType?.message}>
+        <FormSection title="Expense Details">
+          <FormField
+            label="Expense Type"
+            htmlFor="expenseType"
+            required
+            error={errors.expenseType?.message}
+          >
             <Select
               value={expenseType}
               onValueChange={(v) => setValue('expenseType', v as ExpenseType, { shouldValidate: true })}
             >
               <SelectTrigger id="expenseType">
-                <SelectValue placeholder="Select type" />
+                <SelectValue placeholder="Select expense type" />
               </SelectTrigger>
               <SelectContent>
                 {Object.values(ExpenseType).map((type) => (
@@ -155,7 +157,12 @@ export function ExpenseForm({
               </SelectContent>
             </Select>
           </FormField>
-          <FormField label="Expense Date" htmlFor="expenseDate" error={errors.expenseDate?.message}>
+          <FormField
+            label="Expense Date"
+            htmlFor="expenseDate"
+            required
+            error={errors.expenseDate?.message}
+          >
             <Controller
               name="expenseDate"
               control={control}
@@ -173,10 +180,18 @@ export function ExpenseForm({
           <FormField
             label="Title"
             htmlFor="title"
+            required
             error={errors.title?.message}
             className="md:col-span-2"
           >
-            <Input id="title" placeholder="Highway Toll - I-95" {...register('title')} />
+            <Input
+              id="title"
+              maxLength={FORM_LIMITS.text}
+              placeholder={PLACEHOLDERS.title}
+              {...enhanceRegister(register('title'), {
+                transform: (v) => sanitizeTextInput(v, FORM_LIMITS.text),
+              })}
+            />
           </FormField>
           <FormField
             label="Description"
@@ -184,13 +199,27 @@ export function ExpenseForm({
             error={errors.description?.message}
             className="md:col-span-2"
           >
-            <Textarea id="description" rows={2} {...register('description')} />
+            <CharacterCountTextarea
+              id="description"
+              rows={2}
+              maxLength={FORM_LIMITS.textarea}
+              placeholder="Describe the expense (optional)"
+              {...register('description')}
+            />
           </FormField>
-        </Section>
+        </FormSection>
 
-        <Section title="Cost">
-          <FormField label="Amount" htmlFor="amount" error={errors.amount?.message}>
-            <Input id="amount" type="number" step="0.01" {...register('amount')} />
+        <FormSection title="Cost">
+          <FormField label="Amount" htmlFor="amount" required error={errors.amount?.message}>
+            <InputAffix
+              id="amount"
+              prefix="₹"
+              inputMode="decimal"
+              placeholder={PLACEHOLDERS.amount}
+              {...enhanceRegister(register('amount'), {
+                transform: (v) => positiveDecimal(String(v)),
+              })}
+            />
           </FormField>
           {showStatus ? (
             <FormField label="Status" htmlFor="status" error={errors.status?.message}>
@@ -199,7 +228,7 @@ export function ExpenseForm({
                 onValueChange={(v) => setValue('status', v as ExpenseStatus, { shouldValidate: true })}
               >
                 <SelectTrigger id="status">
-                  <SelectValue />
+                  <SelectValue placeholder="Select status" />
                 </SelectTrigger>
                 <SelectContent>
                   {Object.values(ExpenseStatus).map((s) => (
@@ -211,11 +240,18 @@ export function ExpenseForm({
               </Select>
             </FormField>
           ) : null}
-        </Section>
+        </FormSection>
 
-        <Section title="Additional">
+        <FormSection title="Additional">
           <FormField label="Receipt URL" htmlFor="receiptImage" error={errors.receiptImage?.message}>
-            <Input id="receiptImage" placeholder="https://..." {...register('receiptImage')} />
+            <Input
+              id="receiptImage"
+              type="url"
+              inputMode="url"
+              maxLength={FORM_LIMITS.url}
+              placeholder={PLACEHOLDERS.receiptUrl}
+              {...register('receiptImage')}
+            />
           </FormField>
           <FormField
             label="Notes"
@@ -223,29 +259,24 @@ export function ExpenseForm({
             error={errors.notes?.message}
             className="md:col-span-2"
           >
-            <Textarea id="notes" rows={3} {...register('notes')} />
+            <CharacterCountTextarea
+              id="notes"
+              rows={3}
+              maxLength={FORM_LIMITS.textarea}
+              placeholder={PLACEHOLDERS.notes}
+              {...register('notes')}
+            />
           </FormField>
-        </Section>
+        </FormSection>
       </motion.form>
 
-      <motion.div
-        className="fixed bottom-0 right-0 z-30 border-t border-border bg-background/95 px-4 py-3 shadow-[0_-8px_24px_rgba(0,0,0,0.12)] backdrop-blur transition-[left] duration-200 md:px-6"
-        style={{ left: actionBarLeft }}
-        variants={actionBarSlide}
-        initial={reduceMotion ? false : 'hidden'}
-        animate="show"
-      >
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          {onCancel ? (
-            <Button type="button" variant="outline" onClick={onCancel} disabled={submitting}>
-              Cancel
-            </Button>
-          ) : null}
-          <Button type="submit" form="expense-form" loading={submitting}>
-            {submitLabel}
-          </Button>
-        </div>
-      </motion.div>
+      <FormActionBar
+        formId="expense-form"
+        submitting={submitting}
+        submitLabel={submitLabel}
+        onCancel={onCancel}
+        isDirty={isDirty}
+      />
     </>
   );
 }

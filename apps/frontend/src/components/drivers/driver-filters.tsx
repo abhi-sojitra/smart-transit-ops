@@ -1,8 +1,9 @@
 'use client';
 
-import { Search } from 'lucide-react';
 import { motion, useReducedMotion } from 'framer-motion';
+import { SearchInput } from '@/components/ui/search-input';
 import { Input } from '@/components/ui/input';
+import { PLACEHOLDERS } from '@/constants/form';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -31,15 +32,13 @@ export function DriverFilters({ filters, onChange, onReset }: DriverFiltersProps
       animate="show"
     >
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <div className="relative md:col-span-2">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            className="pl-9"
-            placeholder="Search name, email, code, license, phone..."
-            value={filters.search}
-            onChange={(e) => onChange({ search: e.target.value, page: 1 })}
-          />
-        </div>
+        <SearchInput
+          containerClassName="md:col-span-2"
+          placeholder={PLACEHOLDERS.search}
+          value={filters.search}
+          debounceMs={300}
+          onChange={(value) => onChange({ search: value, page: 1 })}
+        />
 
         <Select
           value={filters.status}
@@ -85,7 +84,7 @@ export function DriverFilters({ filters, onChange, onReset }: DriverFiltersProps
 
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
         <Input
-          placeholder="City"
+          placeholder="Example: Ahmedabad"
           value={filters.city}
           onChange={(e) => onChange({ city: e.target.value, page: 1 })}
         />

@@ -12,9 +12,10 @@ import {
 } from '@transitops/shared-types';
 import { FormField } from '@/components/forms/form-field';
 import { Input } from '@/components/ui/input';
+import { InputAffix } from '@/components/ui/input-affix';
 import { DatePicker } from '@/components/ui/date-picker';
 import { VehicleSelect } from '@/components/fleet/vehicle-select';
-import { Textarea } from '@/components/ui/textarea';
+import { CharacterCountTextarea } from '@/components/ui/character-count-textarea';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -30,7 +31,11 @@ import {
   type VehicleLookup,
 } from '@/types/maintenance';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { DEFAULT_FORM_OPTIONS, FILE_UPLOAD, FORM_LIMITS, PLACEHOLDERS } from '@/constants/form';
 import { addDaysToDateInput } from '@/utils/date';
+import { digitsOnly, positiveDecimal, sanitizeTextInput } from '@/utils/form-sanitize';
+import { enhanceRegister } from '@/utils/form-register';
+import { optionalPhoneField, positiveAmountField, requiredTrimmedString } from '@/utils/form-validation';
 
 const ALLOWED_FILE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
 const ALLOWED_FILE_EXT = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.pdf'];
@@ -56,28 +61,33 @@ function isAllowedFile(file: File): boolean {
 
 const schema = z
   .object({
-    vehicleId: z.string().min(1, 'Vehicle is required'),
-    maintenanceType: z.nativeEnum(MaintenanceType),
-    title: z
-      .string()
-      .min(3, 'Title is required')
-      .max(100, 'Title must be at most 100 characters'),
+    vehicleId: z.string().min(1, 'Vehicle is required.'),
+    maintenanceType: z.nativeEnum(MaintenanceType, {
+      errorMap: () => ({ message: 'Maintenance type is required.' }),
+    }),
+    title: requiredTrimmedString('Title', 100),
     description: z
       .string()
-      .max(500, 'Description must be at most 500 characters')
+      .max(FORM_LIMITS.textarea, `Description must be at most ${FORM_LIMITS.textarea} characters.`)
       .optional()
       .or(z.literal('')),
-    priority: z.nativeEnum(MaintenancePriority),
-    startDate: z.string().min(1, 'Start date is required'),
-    expectedCompletionDate: z.string().min(1, 'Expected completion is required'),
-    estimatedCost: z.coerce.number().gt(0, 'Cost must be greater than zero'),
-    actualCost: z.union([z.coerce.number().gt(0), z.literal('')]).optional(),
-    vendorName: z.string().optional(),
-    vendorPhone: z.string().optional(),
-    serviceCenter: z.string().optional(),
+    priority: z.nativeEnum(MaintenancePriority, {
+      errorMap: () => ({ message: 'Priority is required.' }),
+    }),
+    startDate: z.string().min(1, 'Start date is required.'),
+    expectedCompletionDate: z.string().min(1, 'Expected completion date is required.'),
+    estimatedCost: positiveAmountField('Estimated cost'),
+    actualCost: z.union([positiveAmountField('Actual cost'), z.literal('')]).optional(),
+    vendorName: z.string().max(FORM_LIMITS.text).optional(),
+    vendorPhone: optionalPhoneField('Vendor phone'),
+    serviceCenter: z.string().max(FORM_LIMITS.text).optional(),
     odometerReading: z.union([z.coerce.number().min(0), z.literal('')]).optional(),
     nextServiceDue: z.string().optional().or(z.literal('')),
-    notes: z.string().max(500, 'Notes must be at most 500 characters').optional().or(z.literal('')),
+    notes: z
+      .string()
+      .max(FORM_LIMITS.textarea, `Notes must be at most ${FORM_LIMITS.textarea} characters.`)
+      .optional()
+      .or(z.literal('')),
   })
   .superRefine((data, ctx) => {
     const today = toDateOnly(todayIsoDate());
@@ -148,9 +158,8 @@ export function MaintenanceForm({
     control,
     formState: { errors },
   } = useForm<MaintenanceFormValues>({
+    ...DEFAULT_FORM_OPTIONS,
     resolver: zodResolver(schema),
-    mode: 'onBlur',
-    reValidateMode: 'onChange',
     defaultValues: {
       vehicleId: '',
       maintenanceType: MaintenanceType.PREVENTIVE,
@@ -159,7 +168,7 @@ export function MaintenanceForm({
       priority: MaintenancePriority.MEDIUM,
       startDate: '',
       expectedCompletionDate: '',
-      estimatedCost: 0,
+      estimatedCost: undefined as unknown as number,
       actualCost: '',
       vendorName: '',
       vendorPhone: '',
@@ -203,7 +212,7 @@ export function MaintenanceForm({
           <CardTitle className="text-base">Vehicle</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
-          <FormField label="Vehicle" htmlFor="vehicleId" error={errors.vehicleId?.message}>
+          <FormField label="Vehicle" htmlFor="vehicleId" required error={errors.vehicleId?.message}>
             <VehicleSelect
               id="vehicleId"
               value={vehicleId}
@@ -281,23 +290,33 @@ export function MaintenanceForm({
           <FormField
             label="Title"
             htmlFor="title"
+            required
             error={errors.title?.message}
-            description={`${title.length}/100`}
+            counter={`${title.length}/100`}
             className="md:col-span-2"
           >
-            <Input id="title" maxLength={100} disabled={notesOnly} {...register('title')} />
+            <Input
+              id="title"
+              maxLength={100}
+              disabled={notesOnly}
+              placeholder="Example: Engine oil change and filter replacement"
+              {...enhanceRegister(register('title'), {
+                transform: (v) => sanitizeTextInput(v, 100),
+              })}
+            />
           </FormField>
           <FormField
             label="Description"
             htmlFor="description"
             error={errors.description?.message}
-            description={`${description.length}/500`}
+            counter={`${description.length}/${FORM_LIMITS.textarea}`}
             className="md:col-span-2"
           >
-            <Textarea
+            <CharacterCountTextarea
               id="description"
-              maxLength={500}
+              maxLength={FORM_LIMITS.textarea}
               disabled={notesOnly}
+              placeholder="Describe the maintenance work (optional)"
               {...register('description')}
             />
           </FormField>
@@ -309,14 +328,36 @@ export function MaintenanceForm({
           <CardTitle className="text-base">Vendor</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-3">
-          <FormField label="Vendor name" htmlFor="vendorName">
-            <Input id="vendorName" disabled={notesOnly} {...register('vendorName')} />
+          <FormField label="Vendor Name" htmlFor="vendorName">
+            <Input
+              id="vendorName"
+              disabled={notesOnly}
+              maxLength={FORM_LIMITS.text}
+              placeholder={PLACEHOLDERS.vendorName}
+              {...register('vendorName')}
+            />
           </FormField>
-          <FormField label="Vendor phone" htmlFor="vendorPhone">
-            <Input id="vendorPhone" disabled={notesOnly} {...register('vendorPhone')} />
+          <FormField label="Vendor Phone" htmlFor="vendorPhone" error={errors.vendorPhone?.message}>
+            <Input
+              id="vendorPhone"
+              type="tel"
+              inputMode="numeric"
+              disabled={notesOnly}
+              maxLength={FORM_LIMITS.phone}
+              placeholder={PLACEHOLDERS.phone}
+              {...enhanceRegister(register('vendorPhone'), {
+                transform: (v) => digitsOnly(v, FORM_LIMITS.phone),
+              })}
+            />
           </FormField>
-          <FormField label="Service center" htmlFor="serviceCenter">
-            <Input id="serviceCenter" disabled={notesOnly} {...register('serviceCenter')} />
+          <FormField label="Service Center" htmlFor="serviceCenter">
+            <Input
+              id="serviceCenter"
+              disabled={notesOnly}
+              maxLength={FORM_LIMITS.text}
+              placeholder={PLACEHOLDERS.serviceCenter}
+              {...register('serviceCenter')}
+            />
           </FormField>
         </CardContent>
       </Card>
@@ -390,31 +431,36 @@ export function MaintenanceForm({
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
           <FormField
-            label="Estimated cost"
+            label="Estimated Cost"
             htmlFor="estimatedCost"
+            required
             error={errors.estimatedCost?.message}
           >
-            <Input
+            <InputAffix
               id="estimatedCost"
-              type="number"
-              step="0.01"
-              min={0.01}
+              prefix="₹"
+              inputMode="decimal"
               disabled={notesOnly}
-              {...register('estimatedCost')}
+              placeholder={PLACEHOLDERS.cost}
+              {...enhanceRegister(register('estimatedCost'), {
+                transform: (v) => positiveDecimal(String(v)),
+              })}
             />
           </FormField>
           <FormField
-            label="Actual cost"
+            label="Actual Cost"
             htmlFor="actualCost"
             error={errors.actualCost?.message as string | undefined}
           >
-            <Input
+            <InputAffix
               id="actualCost"
-              type="number"
-              step="0.01"
-              min={0.01}
+              prefix="₹"
+              inputMode="decimal"
               disabled={notesOnly}
-              {...register('actualCost')}
+              placeholder={PLACEHOLDERS.cost}
+              {...enhanceRegister(register('actualCost'), {
+                transform: (v) => positiveDecimal(String(v)),
+              })}
             />
           </FormField>
         </CardContent>
@@ -429,15 +475,13 @@ export function MaintenanceForm({
             <Input
               type="file"
               multiple
-              accept="image/*,.pdf,image/jpeg,image/png,image/gif,image/webp,application/pdf"
+              accept={FILE_UPLOAD.accept}
               onChange={(e) => {
                 handleFiles(e.target.files);
                 e.target.value = '';
               }}
             />
-            <p className="mt-2 text-xs text-muted-foreground">
-              Images and PDF only (max 10MB each).
-            </p>
+            <p className="mt-2 text-xs text-muted-foreground">{FILE_UPLOAD.acceptLabel}</p>
             {fileError ? <p className="mt-1 text-xs text-destructive">{fileError}</p> : null}
           </CardContent>
         </Card>
@@ -449,12 +493,17 @@ export function MaintenanceForm({
         </CardHeader>
         <CardContent>
           <FormField
-            label="Internal notes"
+            label="Internal Notes"
             htmlFor="notes"
             error={errors.notes?.message}
-            description={`${notes.length}/500`}
+            counter={`${notes.length}/${FORM_LIMITS.textarea}`}
           >
-            <Textarea id="notes" maxLength={500} {...register('notes')} />
+            <CharacterCountTextarea
+              id="notes"
+              maxLength={FORM_LIMITS.textarea}
+              placeholder={PLACEHOLDERS.notes}
+              {...register('notes')}
+            />
           </FormField>
           {notesOnly ? (
             <p className="mt-2 text-xs text-amber-500">

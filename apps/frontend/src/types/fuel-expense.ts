@@ -1,6 +1,14 @@
 import { z } from 'zod';
 import { ExpenseStatus, ExpenseType, FuelType } from '@transitops/shared-types';
+import { FORM_LIMITS } from '@/constants/form';
 import { startOfToday } from '@/utils/date';
+import {
+  notesField,
+  optionalTrimmedString,
+  positiveAmountField,
+  requiredTrimmedString,
+  urlField,
+} from '@/utils/form-validation';
 
 function isFutureDate(value: string): boolean {
   const date = new Date(value);
@@ -9,37 +17,39 @@ function isFutureDate(value: string): boolean {
 }
 
 export const fuelFormSchema = z.object({
-  vehicleId: z.string().min(1, 'Vehicle is required'),
-  tripId: z.string().optional(),
-  driverId: z.string().optional(),
-  fuelStation: z.string().min(1, 'Fuel station is required'),
-  fuelType: z.nativeEnum(FuelType, { errorMap: () => ({ message: 'Fuel type is required' }) }),
-  quantity: z.coerce.number().positive('Quantity must be greater than zero'),
-  pricePerLiter: z.coerce.number().positive('Price must be greater than zero'),
-  odometerReading: z.coerce.number().min(0).optional(),
+  vehicleId: z.string().min(1, 'Vehicle is required.'),
+  tripId: optionalTrimmedString(FORM_LIMITS.text),
+  driverId: optionalTrimmedString(FORM_LIMITS.text),
+  fuelStation: requiredTrimmedString('Fuel station name', FORM_LIMITS.text),
+  fuelType: z.nativeEnum(FuelType, { errorMap: () => ({ message: 'Fuel type is required.' }) }),
+  quantity: positiveAmountField('Quantity'),
+  pricePerLiter: positiveAmountField('Price per liter'),
+  odometerReading: z.coerce.number().min(0, 'Odometer cannot be negative.').optional(),
   filledAt: z
     .string()
-    .min(1, 'Date is required')
-    .refine((value) => !isFutureDate(value), 'Filled date cannot be in the future'),
-  receiptImage: z.string().url('Must be a valid URL').optional().or(z.literal('')),
-  notes: z.string().optional(),
+    .min(1, 'Filled date is required.')
+    .refine((value) => !isFutureDate(value), 'Filled date cannot be in the future.'),
+  receiptImage: urlField('Receipt URL'),
+  notes: notesField,
 });
 
 export const expenseFormSchema = z.object({
-  vehicleId: z.string().min(1, 'Vehicle is required'),
-  tripId: z.string().optional(),
-  driverId: z.string().optional(),
-  expenseType: z.nativeEnum(ExpenseType, { errorMap: () => ({ message: 'Expense type is required' }) }),
-  title: z.string().min(1, 'Title is required'),
-  description: z.string().optional(),
-  amount: z.coerce.number().positive('Amount must be greater than zero'),
+  vehicleId: z.string().min(1, 'Vehicle is required.'),
+  tripId: optionalTrimmedString(FORM_LIMITS.text),
+  driverId: optionalTrimmedString(FORM_LIMITS.text),
+  expenseType: z.nativeEnum(ExpenseType, {
+    errorMap: () => ({ message: 'Expense type is required.' }),
+  }),
+  title: requiredTrimmedString('Expense title', FORM_LIMITS.text),
+  description: optionalTrimmedString(FORM_LIMITS.textarea),
+  amount: positiveAmountField('Amount'),
   expenseDate: z
     .string()
-    .min(1, 'Date is required')
-    .refine((value) => !isFutureDate(value), 'Expense date cannot be in the future'),
-  receiptImage: z.string().url('Must be a valid URL').optional().or(z.literal('')),
+    .min(1, 'Expense date is required.')
+    .refine((value) => !isFutureDate(value), 'Expense date cannot be in the future.'),
+  receiptImage: urlField('Receipt URL'),
   status: z.nativeEnum(ExpenseStatus).optional(),
-  notes: z.string().optional(),
+  notes: notesField,
 });
 
 export type FuelFormValues = z.infer<typeof fuelFormSchema>;
