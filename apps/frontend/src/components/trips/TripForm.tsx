@@ -58,8 +58,16 @@ function toLocalInput(value?: string) {
 }
 
 export function TripForm({ defaultValues, submitLabel = 'Save trip', loading, onSubmit }: TripFormProps) {
-  const { data: vehicles, isLoading: loadingVehicles } = useAvailableVehicles();
-  const { data: drivers, isLoading: loadingDrivers } = useAvailableDrivers();
+  const {
+    data: vehicles = [],
+    isLoading: loadingVehicles,
+    isError: vehiclesError,
+  } = useAvailableVehicles();
+  const {
+    data: drivers = [],
+    isLoading: loadingDrivers,
+    isError: driversError,
+  } = useAvailableDrivers();
 
   const {
     register,
@@ -96,7 +104,8 @@ export function TripForm({ defaultValues, submitLabel = 'Save trip', loading, on
   }, [isDirty, loading]);
 
   const selectedVehicleId = watch('vehicleId');
-  const selectedVehicle = vehicles?.find((v) => v._id === selectedVehicleId);
+  const selectedDriverId = watch('driverId');
+  const selectedVehicle = vehicles.find((v) => String(v._id) === selectedVehicleId);
 
   return (
     <form
@@ -141,20 +150,43 @@ export function TripForm({ defaultValues, submitLabel = 'Save trip', loading, on
           <CardDescription>Only available assets can be assigned.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
-          <FormField label="Vehicle *" htmlFor="vehicleId" error={errors.vehicleId?.message}>
+          <FormField
+            label="Vehicle *"
+            htmlFor="vehicleId"
+            error={
+              errors.vehicleId?.message ??
+              (vehiclesError ? 'Failed to load vehicles' : undefined)
+            }
+            description={
+              !loadingVehicles && !vehiclesError && vehicles.length === 0
+                ? 'No free vehicles right now. Cancel or complete an active trip first.'
+                : undefined
+            }
+          >
             <Select
-              value={watch('vehicleId')}
-              onValueChange={(value) => setValue('vehicleId', value, { shouldValidate: true, shouldDirty: true })}
-              disabled={loadingVehicles}
+              value={selectedVehicleId || undefined}
+              onValueChange={(value) =>
+                setValue('vehicleId', value, { shouldValidate: true, shouldDirty: true })
+              }
+              disabled={loadingVehicles || vehiclesError || vehicles.length === 0}
             >
               <SelectTrigger id="vehicleId">
-                <SelectValue placeholder="Select available vehicle" />
+                <SelectValue
+                  placeholder={
+                    loadingVehicles
+                      ? 'Loading vehicles…'
+                      : vehicles.length === 0
+                        ? 'No available vehicles'
+                        : 'Select available vehicle'
+                  }
+                />
               </SelectTrigger>
               <SelectContent>
-                {vehicles?.map((vehicle) => {
+                {vehicles.map((vehicle) => {
+                  const id = String(vehicle._id);
                   const name = [vehicle.make, vehicle.model].filter(Boolean).join(' ').trim();
                   return (
-                    <SelectItem key={vehicle._id} value={vehicle._id}>
+                    <SelectItem key={id} value={id}>
                       {name || vehicle.model || vehicle.vehicleId} · cap {vehicle.maxCapacity}
                     </SelectItem>
                   );
@@ -162,20 +194,42 @@ export function TripForm({ defaultValues, submitLabel = 'Save trip', loading, on
               </SelectContent>
             </Select>
           </FormField>
-          <FormField label="Driver *" htmlFor="driverId" error={errors.driverId?.message}>
+          <FormField
+            label="Driver *"
+            htmlFor="driverId"
+            error={
+              errors.driverId?.message ?? (driversError ? 'Failed to load drivers' : undefined)
+            }
+            description={
+              !loadingDrivers && !driversError && drivers.length === 0
+                ? 'No free drivers right now. Cancel or complete an active trip first.'
+                : undefined
+            }
+          >
             <Select
-              value={watch('driverId')}
-              onValueChange={(value) => setValue('driverId', value, { shouldValidate: true, shouldDirty: true })}
-              disabled={loadingDrivers}
+              value={selectedDriverId || undefined}
+              onValueChange={(value) =>
+                setValue('driverId', value, { shouldValidate: true, shouldDirty: true })
+              }
+              disabled={loadingDrivers || driversError || drivers.length === 0}
             >
               <SelectTrigger id="driverId">
-                <SelectValue placeholder="Select available driver" />
+                <SelectValue
+                  placeholder={
+                    loadingDrivers
+                      ? 'Loading drivers…'
+                      : drivers.length === 0
+                        ? 'No available drivers'
+                        : 'Select available driver'
+                  }
+                />
               </SelectTrigger>
               <SelectContent>
-                {drivers?.map((driver) => {
-                  const value = driver.id ?? driver._id;
+                {drivers.map((driver) => {
+                  const value = String(driver.id ?? driver._id ?? '');
+                  if (!value) return null;
                   return (
-                    <SelectItem key={value} value={value!}>
+                    <SelectItem key={value} value={value}>
                       {driver.fullName ?? `${driver.firstName} ${driver.lastName}`} ·{' '}
                       {driver.employeeCode ?? driver.employeeId}
                     </SelectItem>
