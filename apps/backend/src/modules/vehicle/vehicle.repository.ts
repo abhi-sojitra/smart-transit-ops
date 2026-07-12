@@ -44,4 +44,8 @@ export class VehicleRepository {
       .findOneAndUpdate({ _id: id, isDeleted: { $ne: true } }, { $set: data }, { new: true })
       .exec();
   }
+
+  countByStatus(status: VehicleStatus): Promise<number> {
+    return this.model.countDocuments({ status, isDeleted: { $ne: true } }).exec();
+  }
 }

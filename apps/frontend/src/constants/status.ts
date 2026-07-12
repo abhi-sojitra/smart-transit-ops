@@ -20,4 +20,8 @@ export const statusColorMap: Record<string, string> = {
   APPROVED: 'bg-emerald-500/15 text-emerald-500 border-emerald-500/20',
   REJECTED: 'bg-red-500/15 text-red-500 border-red-500/20',
   INACTIVE: 'bg-slate-500/15 text-slate-400 border-slate-500/20',
+  LOW: 'bg-emerald-500/15 text-emerald-500 border-emerald-500/20',
+  MEDIUM: 'bg-orange-500/15 text-orange-500 border-orange-500/20',
+  HIGH: 'bg-red-500/15 text-red-500 border-red-500/20',
+  CRITICAL: 'bg-red-500/15 text-red-500 border-red-500/20',
 };

@@ -12,6 +12,7 @@ import { buildDemoVehicles } from '../../modules/fleet/seeds/vehicle.seed';
 import { DEFAULT_ROLES } from './roles.seed';
 import { TEST_USERS } from './test-users.seed';
 import { seedTripDispatcherData } from './trip.seed';
+import { seedMaintenanceAndVehicles } from './maintenance.seed';
 
 loadEnv({ path: resolve(__dirname, '../../../.env') });
 
@@ -90,8 +91,9 @@ async function runSeed() {
     );
   }
 
-  // Trip seed uses the legacy vehicle schema and creates trips/maintenance.
+  // Trip seed uses the legacy vehicle schema and creates trips.
   await seedTripDispatcherData(mongoose);
+  await seedMaintenanceAndVehicles(mongoose);
 
   // Re-register with fleet schema so demo vehicles include compliance fields.
   if (mongoose.models.Vehicle) {
