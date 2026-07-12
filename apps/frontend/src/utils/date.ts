@@ -108,3 +108,26 @@ export function formatDateRangeLabel(from?: string, to?: string, placeholder = '
   if (to) return `Until ${formatDisplayDate(to)}`;
   return placeholder;
 }
+
+/** Parse ISO or datetime-local (YYYY-MM-DDTHH:mm) to Date. */
+export function parseDateTimeInput(value?: string | null): Date | undefined {
+  if (!value) return undefined;
+  const parsed = new Date(value);
+  return isValid(parsed) ? parsed : undefined;
+}
+
+/** Format Date to datetime-local string (YYYY-MM-DDTHH:mm). */
+export function toDateTimeLocalInput(value?: Date | string | null): string {
+  const date = value instanceof Date ? value : parseDateTimeInput(value);
+  if (!date || !isValid(date)) return '';
+  const offset = date.getTimezoneOffset();
+  const local = new Date(date.getTime() - offset * 60_000);
+  return local.toISOString().slice(0, 16);
+}
+
+/** Display date and time in a consistent locale format. */
+export function formatDisplayDateTime(value?: string | Date | null, fallback = '—'): string {
+  const date = value instanceof Date ? value : parseDateTimeInput(value);
+  if (!date) return fallback;
+  return format(date, 'dd MMM yyyy, HH:mm');
+}

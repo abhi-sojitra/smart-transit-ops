@@ -6,4 +6,4 @@ export { MaintenanceStatusBadge } from './MaintenanceStatusBadge';
 export { MaintenanceStatisticsCards } from './MaintenanceStatistics';
 export { MaintenanceFilters } from './MaintenanceFilters';
 export { CloseMaintenanceDialog } from './CloseMaintenanceDialog';
-export { MaintenanceLoadingSkeleton, MaintenanceDetailSkeleton } from './LoadingSkeleton';
+export { MaintenanceLoadingSkeleton, MaintenanceDetailSkeleton, MaintenanceFormSkeleton } from './LoadingSkeleton';

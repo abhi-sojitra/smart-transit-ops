@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { motion, useReducedMotion } from 'framer-motion';
 import { FuelType } from '@transitops/shared-types';
 import { FormField } from '@/components/forms/form-field';
+import { FormShell } from '@/components/forms/form-shell';
 import { FormSection } from '@/components/forms/form-section';
 import { FormActionBar } from '@/components/forms/form-action-bar';
 import { Input } from '@/components/ui/input';
@@ -99,7 +100,8 @@ export function FuelForm({
           await onSubmit(clean(values));
         })}
       >
-        <FormSection title="Assignment">
+        <FormShell submitting={submitting}>
+          <FormSection title="Assignment">
           <FormField label="Vehicle" htmlFor="vehicleId" required error={errors.vehicleId?.message}>
             <VehicleSelect
               id="vehicleId"
@@ -130,9 +132,9 @@ export function FuelForm({
               })}
             />
           </FormField>
-        </FormSection>
+          </FormSection>
 
-        <FormSection title="Fuel Details">
+          <FormSection title="Fuel Details">
           <FormField
             label="Fuel Station"
             htmlFor="fuelStation"
@@ -192,9 +194,9 @@ export function FuelForm({
               {...register('odometerReading')}
             />
           </FormField>
-        </FormSection>
+          </FormSection>
 
-        <FormSection title="Cost">
+          <FormSection title="Cost">
           <FormField label="Quantity" htmlFor="quantity" required error={errors.quantity?.message}>
             <InputAffix
               id="quantity"
@@ -222,9 +224,9 @@ export function FuelForm({
               })}
             />
           </FormField>
-        </FormSection>
+          </FormSection>
 
-        <FormSection title="Additional">
+          <FormSection title="Additional">
           <FormField label="Receipt URL" htmlFor="receiptImage" error={errors.receiptImage?.message}>
             <Input
               id="receiptImage"
@@ -249,7 +251,8 @@ export function FuelForm({
               {...register('notes')}
             />
           </FormField>
-        </FormSection>
+          </FormSection>
+        </FormShell>
       </motion.form>
 
       <FormActionBar

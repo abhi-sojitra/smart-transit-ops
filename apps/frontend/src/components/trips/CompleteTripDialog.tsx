@@ -12,10 +12,11 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { FormField } from '@/components/forms/form-field';
+import { FormShell } from '@/components/forms/form-shell';
 import { InputAffix } from '@/components/ui/input-affix';
 import { CharacterCountTextarea } from '@/components/ui/character-count-textarea';
 import { DEFAULT_FORM_OPTIONS, FORM_LIMITS, PLACEHOLDERS } from '@/constants/form';
-import { positiveDecimal, sanitizeTextInput } from '@/utils/form-sanitize';
+import { positiveDecimal } from '@/utils/form-sanitize';
 import { enhanceRegister } from '@/utils/form-register';
 import { nonNegativeAmountField } from '@/utils/form-validation';
 import type { TripRecord } from '@/types/trip';
@@ -69,6 +70,7 @@ export function CompleteTripDialog({
           </DialogDescription>
         </DialogHeader>
         <form className="space-y-4" onSubmit={handleSubmit(onConfirm)} noValidate>
+          <FormShell submitting={loading}>
           <FormField
             label="Actual Distance"
             htmlFor="actualDistance"
@@ -133,6 +135,7 @@ export function CompleteTripDialog({
               Complete trip
             </Button>
           </div>
+          </FormShell>
         </form>
       </DialogContent>
     </Dialog>

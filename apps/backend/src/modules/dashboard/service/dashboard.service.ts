@@ -113,25 +113,24 @@ export class DashboardService {
 
   async getRecentTrips(limit = 10): Promise<RecentTripItem[]> {
     const rows = await this.dashboardRepository.getRecentTrips(limit);
-    return rows
-      .map((row) => {
-        const plannedStartDate =
-          this.safeToIso(row.plannedStartDate) ?? this.safeToIso(row.createdAt);
-        if (!plannedStartDate) return null;
+    return rows.flatMap((row) => {
+      const plannedStartDate =
+        this.safeToIso(row.plannedStartDate) ?? this.safeToIso(row.createdAt);
+      if (!plannedStartDate) return [];
 
-        return {
-          id: String(row.id),
-          tripNumber: String(row.tripNumber),
-          source: String(row.source),
-          destination: String(row.destination),
-          status: String(row.status),
-          plannedStartDate,
-          revenue: Number(row.revenue ?? 0),
-          driverName: row.driverName ? String(row.driverName) : undefined,
-          vehicleLabel: row.vehicleLabel ? String(row.vehicleLabel) : undefined,
-        };
-      })
-      .filter((row): row is RecentTripItem => row !== null);
+      const item: RecentTripItem = {
+        id: String(row.id),
+        tripNumber: String(row.tripNumber),
+        source: String(row.source),
+        destination: String(row.destination),
+        status: String(row.status),
+        plannedStartDate,
+        revenue: Number(row.revenue ?? 0),
+      };
+      if (row.driverName) item.driverName = String(row.driverName);
+      if (row.vehicleLabel) item.vehicleLabel = String(row.vehicleLabel);
+      return [item];
+    });
   }
 
   async getBusinessSummary(period: ReportPeriod = 'monthly'): Promise<BusinessSummary> {

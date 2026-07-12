@@ -1,5 +1,8 @@
 'use client';
 
+import { useMemo } from 'react';
+import { X } from 'lucide-react';
+import { motion, useReducedMotion } from 'framer-motion';
 import {
   MAINTENANCE_PRIORITY_OPTIONS,
   MAINTENANCE_STATUS_OPTIONS,
@@ -10,6 +13,8 @@ import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { VehicleSelect } from '@/components/fleet/vehicle-select';
 import { SearchInput } from '@/components/ui/search-input';
 import { Button } from '@/components/ui/button';
+import { sectionReveal } from '@/components/drivers/motion';
+import { formatDisplayDate } from '@/utils/date';
 import {
   Select,
   SelectContent,
@@ -24,16 +29,76 @@ interface MaintenanceFiltersProps {
 }
 
 export function MaintenanceFilters({ value, onChange }: MaintenanceFiltersProps) {
+  const reduceMotion = useReducedMotion();
   const set = (patch: Partial<MaintenanceListParams>) =>
     onChange({ ...value, page: 1, ...patch });
 
+  const chips = useMemo(() => {
+    const items: Array<{ key: string; label: string; clear: () => void }> = [];
+    if (value.search?.trim()) {
+      items.push({
+        key: 'search',
+        label: `Search: ${value.search}`,
+        clear: () => set({ search: '' }),
+      });
+    }
+    if (value.status) {
+      const label =
+        MAINTENANCE_STATUS_OPTIONS.find((opt) => opt.value === value.status)?.label ?? value.status;
+      items.push({ key: 'status', label: `Status: ${label}`, clear: () => set({ status: '' }) });
+    }
+    if (value.priority) {
+      const label =
+        MAINTENANCE_PRIORITY_OPTIONS.find((opt) => opt.value === value.priority)?.label ??
+        value.priority;
+      items.push({ key: 'priority', label: `Priority: ${label}`, clear: () => set({ priority: '' }) });
+    }
+    if (value.maintenanceType) {
+      const label =
+        MAINTENANCE_TYPE_OPTIONS.find((opt) => opt.value === value.maintenanceType)?.label ??
+        value.maintenanceType;
+      items.push({
+        key: 'type',
+        label: `Type: ${label}`,
+        clear: () => set({ maintenanceType: '' }),
+      });
+    }
+    if (value.vehicleId) {
+      items.push({
+        key: 'vehicle',
+        label: 'Vehicle filtered',
+        clear: () => set({ vehicleId: undefined }),
+      });
+    }
+    if (value.startDateFrom) {
+      items.push({
+        key: 'from',
+        label: `From: ${formatDisplayDate(value.startDateFrom)}`,
+        clear: () => set({ startDateFrom: undefined }),
+      });
+    }
+    if (value.startDateTo) {
+      items.push({
+        key: 'to',
+        label: `To: ${formatDisplayDate(value.startDateTo)}`,
+        clear: () => set({ startDateTo: undefined }),
+      });
+    }
+    return items;
+  }, [value]);
+
   return (
-    <div className="space-y-3 rounded-xl border border-border bg-card/40 p-4">
+    <motion.div
+      className="space-y-3 rounded-xl border border-border bg-card/60 p-4"
+      variants={sectionReveal}
+      initial={reduceMotion ? false : 'hidden'}
+      animate="show"
+    >
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <SearchInput
           placeholder="Search number, vehicle, vendor..."
           value={value.search ?? ''}
-          onChange={(value) => set({ search: value })}
+          onChange={(search) => set({ search })}
         />
         <Select
           value={value.status || 'all'}
@@ -126,7 +191,20 @@ export function MaintenanceFilters({ value, onChange }: MaintenanceFiltersProps)
           </SelectContent>
         </Select>
       </div>
-      <div className="flex justify-end">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap gap-2">
+          {chips.map((chip) => (
+            <button
+              key={chip.key}
+              type="button"
+              onClick={chip.clear}
+              className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/50 px-2.5 py-1 text-xs text-foreground transition hover:bg-muted"
+            >
+              {chip.label}
+              <X className="h-3 w-3 text-muted-foreground" />
+            </button>
+          ))}
+        </div>
         <Button
           type="button"
           variant="outline"
@@ -143,6 +221,6 @@ export function MaintenanceFilters({ value, onChange }: MaintenanceFiltersProps)
           Reset filters
         </Button>
       </div>
-    </div>
+    </motion.div>
   );
 }

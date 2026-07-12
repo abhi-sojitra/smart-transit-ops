@@ -13,7 +13,6 @@ import {
   Tooltip,
   XAxis,
   YAxis,
-  Legend,
 } from 'recharts';
 import { ChartCard } from '@/components/charts/chart-card';
 import { Skeleton } from '@/components/ui/skeleton';

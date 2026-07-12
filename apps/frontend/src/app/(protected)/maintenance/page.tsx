@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Plus, Wrench } from 'lucide-react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { PageHeader } from '@/components/layout/page-header';
 import { Breadcrumb } from '@/components/layout/breadcrumb';
 import { Button } from '@/components/ui/button';
@@ -25,8 +26,10 @@ import {
   useStartMaintenance,
 } from '@/hooks/use-maintenance';
 import type { Maintenance, MaintenanceListParams } from '@/types/maintenance';
+import { pageFade, staggerContainer } from '@/components/drivers/motion';
 
 export default function MaintenancePage() {
+  const reduceMotion = useReducedMotion();
   const [filters, setFilters] = useState<MaintenanceListParams>({
     page: 1,
     limit: 10,
@@ -90,7 +93,12 @@ export default function MaintenancePage() {
   }
 
   return (
-    <div className="space-y-6">
+    <motion.div
+      className="space-y-6"
+      variants={pageFade}
+      initial={reduceMotion ? false : 'hidden'}
+      animate="show"
+    >
       <div>
         <Breadcrumb items={[{ label: 'Home', href: '/dashboard' }, { label: 'Maintenance' }]} />
         <PageHeader
@@ -127,13 +135,26 @@ export default function MaintenancePage() {
         />
       </div>
 
-      <div className="grid gap-3 md:hidden">
+      <motion.div
+        className="grid gap-3 md:hidden"
+        variants={staggerContainer}
+        initial={reduceMotion ? false : 'hidden'}
+        animate="show"
+      >
         {mobileCards.length ? (
-          mobileCards.map((item) => <MaintenanceCard key={item.id} item={item} />)
+          mobileCards.map((item) => (
+            <MaintenanceCard
+              key={item.id}
+              item={item}
+              onStart={(row) => startMutation.mutate(row.id)}
+              onComplete={setCompleteTarget}
+              onCancel={setCancelTarget}
+            />
+          ))
         ) : (
           <EmptyState title="No maintenance records" description="Create a work order to get started." />
         )}
-      </div>
+      </motion.div>
 
       <CloseMaintenanceDialog
         open={Boolean(completeTarget)}
@@ -181,6 +202,6 @@ export default function MaintenancePage() {
           });
         }}
       />
-    </div>
+    </motion.div>
   );
 }

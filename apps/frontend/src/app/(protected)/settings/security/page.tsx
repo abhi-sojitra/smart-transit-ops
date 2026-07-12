@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { FormShell } from '@/components/forms/form-shell';
 import { useSecuritySettings, useUpdateSecurityMutation } from '@/hooks/use-admin';
 
 export default function SecuritySettingsPage() {
@@ -52,6 +53,7 @@ export default function SecuritySettingsPage() {
       </div>
 
       <SettingsCard title="Password policy">
+        <FormShell fetching={query.isLoading} submitting={mutation.isPending} skeletonFields={6}>
         <form
           className="grid max-w-xl gap-4"
           onSubmit={(e) => {
@@ -125,10 +127,11 @@ export default function SecuritySettingsPage() {
               />
             </div>
           </div>
-          <Button type="submit" disabled={mutation.isPending}>
-            {mutation.isPending ? 'Saving…' : 'Save security settings'}
+          <Button type="submit" loading={mutation.isPending}>
+            Save security settings
           </Button>
         </form>
+        </FormShell>
       </SettingsCard>
     </div>
   );

@@ -7,6 +7,7 @@ import { Breadcrumb } from '@/components/layout/breadcrumb';
 import { SettingsCard } from '@/components/settings/settings-card';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { FormShell } from '@/components/forms/form-shell';
 import {
   Select,
   SelectContent,
@@ -54,6 +55,7 @@ export default function AppearanceSettingsPage() {
       </div>
 
       <SettingsCard title="Theme & layout">
+        <FormShell fetching={query.isLoading} submitting={mutation.isPending} skeletonFields={3}>
         <div className="grid max-w-md gap-4">
           <div className="space-y-1.5">
             <p className="text-sm font-medium">Theme</p>
@@ -92,16 +94,17 @@ export default function AppearanceSettingsPage() {
             Compact tables
           </label>
           <Button
-            disabled={mutation.isPending}
+            loading={mutation.isPending}
             onClick={() => {
               setTheme(form.theme === 'system' ? 'system' : form.theme);
               setSidebarCollapsed(form.sidebarCollapsed);
               void mutation.mutateAsync(form);
             }}
           >
-            {mutation.isPending ? 'Saving…' : 'Save appearance'}
+            Save appearance
           </Button>
         </div>
+        </FormShell>
       </SettingsCard>
     </div>
   );

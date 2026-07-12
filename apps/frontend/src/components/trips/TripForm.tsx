@@ -7,7 +7,10 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { CargoType } from '@transitops/shared-types';
 import { FormField } from '@/components/forms/form-field';
+import { FormShell } from '@/components/forms/form-shell';
+import { DateTimePicker } from '@/components/ui/date-time-picker';
 import { Input } from '@/components/ui/input';
+import { toDateTimeLocalInput } from '@/utils/date';
 import { InputAffix } from '@/components/ui/input-affix';
 import { CharacterCountTextarea } from '@/components/ui/character-count-textarea';
 import { Button } from '@/components/ui/button';
@@ -82,11 +85,7 @@ interface TripFormProps {
 }
 
 function toLocalInput(value?: string) {
-  if (!value) return '';
-  const date = new Date(value);
-  const offset = date.getTimezoneOffset();
-  const local = new Date(date.getTime() - offset * 60_000);
-  return local.toISOString().slice(0, 16);
+  return toDateTimeLocalInput(value);
 }
 
 function assetId(asset: { id?: string; _id?: string }): string {
@@ -178,6 +177,7 @@ export function TripForm({
         }),
       )}
     >
+      <FormShell submitting={loading}>
       <Card>
         <CardHeader>
           <CardTitle>Trip</CardTitle>
@@ -211,11 +211,17 @@ export function TripForm({
             required
             error={errors.plannedStartDate?.message}
           >
-            <Input
+            <DateTimePicker
               id="plannedStartDate"
-              type="datetime-local"
-              min={minStartDateTime}
-              {...register('plannedStartDate')}
+              value={plannedStartDate}
+              onChange={(next) =>
+                setValue('plannedStartDate', next, { shouldValidate: true, shouldDirty: true })
+              }
+              minDateTime={minStartDateTime}
+              disablePast
+              clearable={false}
+              placeholder="Select start date & time"
+              aria-invalid={Boolean(errors.plannedStartDate)}
             />
           </FormField>
           <FormField
@@ -224,11 +230,17 @@ export function TripForm({
             required
             error={errors.plannedEndDate?.message}
           >
-            <Input
+            <DateTimePicker
               id="plannedEndDate"
-              type="datetime-local"
-              min={minEndDateTime}
-              {...register('plannedEndDate')}
+              value={watch('plannedEndDate')}
+              onChange={(next) =>
+                setValue('plannedEndDate', next, { shouldValidate: true, shouldDirty: true })
+              }
+              minDateTime={minEndDateTime}
+              disablePast
+              clearable={false}
+              placeholder="Select end date & time"
+              aria-invalid={Boolean(errors.plannedEndDate)}
             />
           </FormField>
         </CardContent>
@@ -428,6 +440,7 @@ export function TripForm({
           </Button>
         </div>
       </div>
+      </FormShell>
     </form>
   );
 }
