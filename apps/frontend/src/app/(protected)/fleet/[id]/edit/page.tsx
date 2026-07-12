@@ -80,6 +80,7 @@ export default function EditVehiclePage() {
           fuelType: vehicle.fuelType,
           color: vehicle.color ?? '',
           seatingCapacity: vehicle.seatingCapacity,
+          maxCapacity: vehicle.maxCapacity,
           mileage: vehicle.mileage,
           purchaseDate: toDateInput(vehicle.purchaseDate),
           registrationExpiryDate: toDateInput(vehicle.registrationExpiryDate),

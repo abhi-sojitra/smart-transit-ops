@@ -33,6 +33,7 @@ export interface VehicleFormValues {
   fuelType: FuelType;
   color?: string;
   seatingCapacity?: number;
+  maxCapacity: number;
   mileage: number;
   purchaseDate?: string;
   registrationExpiryDate: string;

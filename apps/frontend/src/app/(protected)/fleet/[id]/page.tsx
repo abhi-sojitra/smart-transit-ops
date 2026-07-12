@@ -133,6 +133,14 @@ export default function VehicleDetailPage() {
               <DetailItem label="Year" value={vehicle.year} />
               <DetailItem label="Mileage" value={`${vehicle.mileage.toLocaleString()} km`} />
               <DetailItem label="Seating" value={vehicle.seatingCapacity} />
+              <DetailItem
+                label="Max Load Capacity"
+                value={
+                  vehicle.maxCapacity != null
+                    ? `${vehicle.maxCapacity.toLocaleString()} kg`
+                    : undefined
+                }
+              />
             </CardContent>
           </Card>
         </motion.div>

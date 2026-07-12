@@ -99,6 +99,7 @@ export function buildDemoVehicles(count = 20) {
       fuelType: FUEL_TYPES[index % FUEL_TYPES.length],
       color: ['White', 'Blue', 'Silver', 'Red', 'Yellow'][index % 5],
       seatingCapacity: 12 + (index % 40),
+      maxCapacity: 100 + (index % 5) * 100,
       mileage: 15000 + index * 4200,
       purchaseDate: new Date(2018 + (index % 6), index % 12, 15),
       registrationExpiryDate,

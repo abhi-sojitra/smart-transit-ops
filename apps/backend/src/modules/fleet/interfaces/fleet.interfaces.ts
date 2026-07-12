@@ -19,6 +19,7 @@ export interface VehicleEntity {
   fuelType: FuelType;
   color?: string;
   seatingCapacity?: number;
+  maxCapacity: number;
   mileage: number;
   purchaseDate?: Date;
   registrationExpiryDate: Date;

@@ -48,6 +48,10 @@ const vehicleFormSchema = z
     fuelType: z.nativeEnum(FuelType),
     color: z.string().optional(),
     seatingCapacity: z.coerce.number().min(1).max(200).optional(),
+    maxCapacity: z.coerce
+      .number({ invalid_type_error: 'Maximum load capacity is required' })
+      .min(1, 'Maximum load capacity must be at least 1 kg')
+      .max(500, 'Maximum load capacity must not exceed 500 kg'),
     mileage: z.coerce.number().min(0),
     purchaseDate: z.string().optional(),
     registrationExpiryDate: z.string().min(1, 'Registration expiry is required'),
@@ -63,16 +67,23 @@ const vehicleFormSchema = z
     status: z.nativeEnum(VehicleStatus).optional(),
   })
   .superRefine((data, ctx) => {
+    const parseDateOnly = (value?: string) => {
+      if (!value?.trim()) return null;
+      const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value.trim());
+      if (!match) return null;
+      return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+    };
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+
     const complianceFields = [
       { key: 'registrationExpiryDate' as const, label: 'Registration expiry' },
       { key: 'insuranceExpiryDate' as const, label: 'Insurance expiry' },
       { key: 'fitnessCertificateExpiryDate' as const, label: 'Fitness expiry' },
     ];
     for (const field of complianceFields) {
-      const date = new Date(data[field.key]);
-      if (Number.isNaN(date.getTime()) || date.getTime() <= today.getTime()) {
+      const date = parseDateOnly(data[field.key]);
+      if (!date || date.getTime() <= today.getTime()) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: [field.key],
@@ -80,10 +91,27 @@ const vehicleFormSchema = z
         });
       }
     }
-    if (data.lastServiceDate && data.nextServiceDueDate) {
-      const last = new Date(data.lastServiceDate);
-      const next = new Date(data.nextServiceDueDate);
-      if (!Number.isNaN(last.getTime()) && !Number.isNaN(next.getTime()) && next < last) {
+
+    const lastService = parseDateOnly(data.lastServiceDate);
+    if (data.lastServiceDate?.trim()) {
+      if (!lastService || lastService.getTime() > today.getTime()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['lastServiceDate'],
+          message: 'Last service date must be today or a past date',
+        });
+      }
+    }
+
+    const nextService = parseDateOnly(data.nextServiceDueDate);
+    if (data.nextServiceDueDate?.trim()) {
+      if (!nextService || nextService.getTime() <= today.getTime()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['nextServiceDueDate'],
+          message: 'Next service due must be greater than today',
+        });
+      } else if (lastService && nextService.getTime() < lastService.getTime()) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['nextServiceDueDate'],
@@ -114,6 +142,7 @@ const emptyDefaults: VehicleFormSchema = {
   fuelType: FuelType.DIESEL,
   color: '',
   seatingCapacity: undefined,
+  maxCapacity: 0,
   mileage: 0,
   purchaseDate: '',
   registrationExpiryDate: '',
@@ -201,6 +230,7 @@ export function VehicleForm({
       <motion.form
         id="vehicle-form"
         className="space-y-5 pb-28"
+        noValidate
         variants={staggerContainer}
         initial={reduceMotion ? false : 'hidden'}
         animate="show"
@@ -229,7 +259,7 @@ export function VehicleForm({
             <Input id="model" {...register('model')} />
           </FormField>
           <FormField label="Year" htmlFor="year" error={errors.year?.message}>
-            <Input id="year" type="number" min={1980} {...register('year')} />
+            <Input id="year" type="number" {...register('year')} />
           </FormField>
         </Section>
 
@@ -280,10 +310,23 @@ export function VehicleForm({
             htmlFor="seatingCapacity"
             error={errors.seatingCapacity?.message}
           >
-            <Input id="seatingCapacity" type="number" min={1} {...register('seatingCapacity')} />
+            <Input id="seatingCapacity" type="number" {...register('seatingCapacity')} />
+          </FormField>
+          <FormField
+            label="Maximum Load Capacity (kg)"
+            htmlFor="maxCapacity"
+            error={errors.maxCapacity?.message}
+          >
+            <Input
+              id="maxCapacity"
+              type="number"
+              step={1}
+              placeholder="e.g. 500"
+              {...register('maxCapacity')}
+            />
           </FormField>
           <FormField label="Mileage (km)" htmlFor="mileage" error={errors.mileage?.message}>
-            <Input id="mileage" type="number" min={0} {...register('mileage')} />
+            <Input id="mileage" type="number" {...register('mileage')} />
           </FormField>
           <FormField label="Purchase Date" htmlFor="purchaseDate" error={errors.purchaseDate?.message}>
             <Input id="purchaseDate" type="date" {...register('purchaseDate')} />

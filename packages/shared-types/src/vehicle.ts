@@ -37,6 +37,8 @@ export interface Vehicle {
   fuelType: FuelType;
   color?: string;
   seatingCapacity?: number;
+  /** Maximum cargo/load capacity in kilograms */
+  maxCapacity: number;
   mileage: number;
   purchaseDate?: string;
   registrationExpiryDate: string;

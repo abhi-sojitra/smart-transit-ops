@@ -54,9 +54,9 @@ export class Vehicle {
   @Prop({ type: Number, min: 1 })
   seatingCapacity?: number;
 
-  /** Cargo capacity used by Trip dispatcher (kg / units). */
-  @Prop({ type: Number, min: 0, default: 0 })
-  maxCapacity?: number;
+  /** Maximum load / cargo capacity in kg (1–500). Used by Trip dispatcher. */
+  @Prop({ type: Number, required: true, min: 1, max: 500 })
+  maxCapacity!: number;
 
   @Prop({ type: Number, required: true, min: 0, default: 0 })
   mileage!: number;

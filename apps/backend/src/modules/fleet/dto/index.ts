@@ -41,6 +41,9 @@ export class VehicleResponseDto {
   @ApiPropertyOptional({ example: 45 })
   seatingCapacity?: number;
 
+  @ApiProperty({ example: 500, description: 'Maximum load capacity in kilograms' })
+  maxCapacity!: number;
+
   @ApiProperty({ example: 84210 })
   mileage!: number;
 
