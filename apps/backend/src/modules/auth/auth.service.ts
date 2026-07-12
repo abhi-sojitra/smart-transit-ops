@@ -1,32 +1,99 @@
-import { Injectable, NotImplementedException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  NotFoundException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import * as bcrypt from 'bcryptjs';
+import { RoleCode, UserAccountStatus, type AuthTokens, type JwtPayload } from '@transitops/shared-types';
 import { UserRepository } from '../../repositories/user.repository';
 
-/**
- * Auth scaffolding only — login / refresh / logout will be implemented later.
- */
 @Injectable()
 export class AuthService {
   constructor(
-    private readonly _users: UserRepository,
-    private readonly _jwt: JwtService,
+    private readonly users: UserRepository,
+    private readonly jwt: JwtService,
     private readonly config: ConfigService,
   ) {}
 
-  async login(_email: string, _password: string) {
-    throw new NotImplementedException('Authentication login is not implemented yet');
+  async login(email: string, password: string): Promise<AuthTokens & { user: Record<string, unknown> }> {
+    const user = await this.users.findByEmail(email);
+    if (!user || user.status !== UserAccountStatus.ACTIVE) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const valid = await bcrypt.compare(password, user.passwordHash);
+    if (!valid) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const roles = (user.roles ?? [])
+      .map((role) => {
+        if (role && typeof role === 'object' && 'code' in role) {
+          return (role as { code: RoleCode }).code;
+        }
+        return null;
+      })
+      .filter((code): code is RoleCode => Boolean(code));
+
+    const tokens = await this.issueTokens(String(user._id), user.email, roles);
+    await this.users.update(String(user._id), {
+      refreshTokenHash: await bcrypt.hash(tokens.refreshToken, 10),
+    });
+
+    return {
+      ...tokens,
+      user: {
+        id: String(user._id),
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        roles,
+      },
+    };
   }
 
-  async refresh(_refreshToken: string) {
-    throw new NotImplementedException('Refresh token flow is not implemented yet');
+  async refresh(refreshToken: string): Promise<AuthTokens> {
+    try {
+      const payload = await this.jwt.verifyAsync<{ sub: string; tokenId?: string }>(refreshToken, {
+        secret: this.getRefreshSecret(),
+      });
+      const user = await this.users.findById(payload.sub);
+      if (!user?.refreshTokenHash) {
+        throw new UnauthorizedException('Invalid refresh token');
+      }
+      const matches = await bcrypt.compare(refreshToken, user.refreshTokenHash);
+      if (!matches) {
+        throw new UnauthorizedException('Invalid refresh token');
+      }
+
+      const roles = (user.roles ?? [])
+        .map((role) => {
+          if (role && typeof role === 'object' && 'code' in role) {
+            return (role as { code: RoleCode }).code;
+          }
+          return null;
+        })
+        .filter((code): code is RoleCode => Boolean(code));
+
+      const tokens = await this.issueTokens(String(user._id), user.email, roles);
+      await this.users.update(String(user._id), {
+        refreshTokenHash: await bcrypt.hash(tokens.refreshToken, 10),
+      });
+      return tokens;
+    } catch {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
   }
 
-  async logout(_userId: string) {
-    throw new NotImplementedException('Logout is not implemented yet');
+  async logout(userId: string) {
+    const user = await this.users.findById(userId);
+    if (!user) throw new NotFoundException('User not found');
+    await this.users.update(userId, { refreshTokenHash: undefined });
+    return { success: true };
   }
 
-  /** Placeholder helper for future JWT issuance */
   getAccessSecret() {
     return this.config.getOrThrow<string>('JWT_SECRET');
   }
@@ -35,12 +102,29 @@ export class AuthService {
     return this.config.getOrThrow<string>('JWT_REFRESH_SECRET');
   }
 
-  /** Reserved for future token signing */
-  getJwtService() {
-    return this._jwt;
-  }
+  private async issueTokens(sub: string, email: string, roles: RoleCode[]): Promise<AuthTokens> {
+    const accessExpires = this.config.get<string>('JWT_EXPIRES_IN', '15m');
+    const refreshExpires = this.config.get<string>('JWT_REFRESH_EXPIRES_IN', '7d');
 
-  getUserRepository() {
-    return this._users;
+    const payload: JwtPayload = { sub, email, roles };
+    const [accessToken, refreshToken] = await Promise.all([
+      this.jwt.signAsync(payload, {
+        secret: this.getAccessSecret(),
+        expiresIn: accessExpires as `${number}${'s' | 'm' | 'h' | 'd'}`,
+      }),
+      this.jwt.signAsync(
+        { sub, tokenId: `${Date.now()}` },
+        {
+          secret: this.getRefreshSecret(),
+          expiresIn: refreshExpires as `${number}${'s' | 'm' | 'h' | 'd'}`,
+        },
+      ),
+    ]);
+
+    return {
+      accessToken,
+      refreshToken,
+      expiresIn: 15 * 60,
+    };
   }
 }

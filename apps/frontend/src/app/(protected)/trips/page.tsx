@@ -1,60 +1,69 @@
 'use client';
 
-import { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { z } from 'zod';
-import { zodResolver } from '@hookform/resolvers/zod';
+import { useMemo, useState } from 'react';
+import Link from 'next/link';
+import { Plus, Route } from 'lucide-react';
 import { PageHeader } from '@/components/layout/page-header';
 import { Breadcrumb } from '@/components/layout/breadcrumb';
-import { Stepper } from '@/components/forms/stepper';
-import { FormField } from '@/components/forms/form-field';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { EmptyState } from '@/components/feedback/empty-state';
+import { TripStatisticsCards } from '@/components/trips/TripStatistics';
+import { TripFilters, type TripFilterState } from '@/components/trips/TripFilters';
+import { TripTable } from '@/components/trips/TripTable';
+import { DispatchDialog } from '@/components/trips/DispatchDialog';
+import { CompleteTripDialog } from '@/components/trips/CompleteTripDialog';
+import { CancelTripDialog } from '@/components/trips/CancelTripDialog';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-
-const steps = ['Trip Details', 'Route & Schedule', 'Driver & Vehicle'];
-
-const tripSchema = z.object({
-  tripId: z.string().min(1, 'Trip ID is required'),
-  origin: z.string().min(1, 'Origin is required'),
-  destination: z.string().min(1, 'Destination is required'),
-  departureTime: z.string().optional(),
-  estimatedArrival: z.string().optional(),
-  vehicleId: z.string().optional(),
-  driverId: z.string().optional(),
-});
-
-type TripValues = z.infer<typeof tripSchema>;
+  useCancelTrip,
+  useCompleteTrip,
+  useDispatchTrip,
+  useStartTrip,
+  useTripStatistics,
+  useTrips,
+} from '@/hooks/use-trips';
+import type { TripRecord } from '@/types/trip';
+import { TripStatus } from '@/types/trip';
 
 export default function TripsPage() {
-  const [step, setStep] = useState(0);
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    formState: { errors },
-  } = useForm<TripValues>({
-    resolver: zodResolver(tripSchema),
-    defaultValues: {
-      tripId: 'TR-9001',
-      origin: '',
-      destination: '',
-    },
+  const [filters, setFilters] = useState<TripFilterState>({
+    search: '',
+    status: '',
+    startDate: '',
+    endDate: '',
+    sortBy: 'createdAt',
+    sortOrder: 'desc',
   });
+  const [page, setPage] = useState(1);
+  const [selected, setSelected] = useState<TripRecord | null>(null);
+  const [dispatchOpen, setDispatchOpen] = useState(false);
+  const [completeOpen, setCompleteOpen] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
 
-  const onSubmit = () => {
-    if (step < steps.length - 1) {
-      setStep((s) => s + 1);
-      return;
-    }
-  };
+  const queryParams = useMemo(
+    () => ({
+      page,
+      limit: 10,
+      search: filters.search || undefined,
+      status: (filters.status || undefined) as TripStatus | undefined,
+      startDate: filters.startDate ? new Date(filters.startDate).toISOString() : undefined,
+      endDate: filters.endDate ? new Date(`${filters.endDate}T23:59:59`).toISOString() : undefined,
+      sortBy: filters.sortBy,
+      sortOrder: filters.sortOrder,
+    }),
+    [filters, page],
+  );
+
+  const { data, isLoading, isError, refetch } = useTrips(queryParams);
+  const { data: stats, isLoading: statsLoading } = useTripStatistics();
+  const dispatchMutation = useDispatchTrip();
+  const startMutation = useStartTrip();
+  const completeMutation = useCompleteTrip();
+  const cancelMutation = useCancelTrip();
+
+  const trips = data?.data ?? [];
+  const meta = data?.meta;
 
   return (
     <div className="space-y-6">
@@ -62,96 +71,145 @@ export default function TripsPage() {
         <Breadcrumb items={[{ label: 'Home', href: '/dashboard' }, { label: 'Trips & Dispatch' }]} />
         <PageHeader
           title="Trip Dispatcher"
-          description="Create and assign trips with a guided multi-step flow."
+          description="Create, assign, dispatch, and track fleet trips with live status."
+          actions={
+            <Button asChild>
+              <Link href="/trips/new">
+                <Plus className="h-4 w-4" />
+                New Trip
+              </Link>
+            </Button>
+          }
         />
       </div>
 
+      <TripStatisticsCards stats={stats} loading={statsLoading} />
+
       <Card>
-        <CardContent className="space-y-6 p-6">
-          <Stepper steps={steps} currentStep={step} />
+        <CardContent className="space-y-4 p-6">
+          <TripFilters
+            value={filters}
+            onChange={(next) => {
+              setPage(1);
+              setFilters(next);
+            }}
+          />
 
-          <form className="space-y-5" onSubmit={handleSubmit(onSubmit)}>
-            {step === 0 ? (
-              <div className="grid gap-4 md:grid-cols-2">
-                <FormField label="Trip ID" htmlFor="tripId" error={errors.tripId?.message}>
-                  <Input id="tripId" {...register('tripId')} />
-                </FormField>
-                <FormField label="Origin" htmlFor="origin" error={errors.origin?.message}>
-                  <Input id="origin" placeholder="Chicago, IL" {...register('origin')} />
-                </FormField>
-                <FormField
-                  label="Destination"
-                  htmlFor="destination"
-                  error={errors.destination?.message}
-                  className="md:col-span-2"
-                >
-                  <Input id="destination" placeholder="Detroit, MI" {...register('destination')} />
-                </FormField>
-              </div>
-            ) : null}
-
-            {step === 1 ? (
-              <div className="grid gap-4 md:grid-cols-2">
-                <FormField label="Departure Time" htmlFor="departureTime">
-                  <Input id="departureTime" type="datetime-local" {...register('departureTime')} />
-                </FormField>
-                <FormField label="Estimated Arrival" htmlFor="estimatedArrival">
-                  <Input
-                    id="estimatedArrival"
-                    type="datetime-local"
-                    {...register('estimatedArrival')}
-                  />
-                </FormField>
-              </div>
-            ) : null}
-
-            {step === 2 ? (
-              <div className="grid gap-4 md:grid-cols-2">
-                <FormField label="Vehicle" htmlFor="vehicleId">
-                  <Select onValueChange={(value) => setValue('vehicleId', value)}>
-                    <SelectTrigger id="vehicleId">
-                      <SelectValue placeholder="Select vehicle" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="VH-1001">VH-1001</SelectItem>
-                      <SelectItem value="VH-1003">VH-1003</SelectItem>
-                      <SelectItem value="VH-1004">VH-1004</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </FormField>
-                <FormField label="Driver" htmlFor="driverId">
-                  <Select onValueChange={(value) => setValue('driverId', value)}>
-                    <SelectTrigger id="driverId">
-                      <SelectValue placeholder="Select driver" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="DR-204">Maya Chen</SelectItem>
-                      <SelectItem value="DR-188">Jordan Lee</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </FormField>
-              </div>
-            ) : null}
-
-            <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-400">
-              Validation demo: vehicle capacity checks will be enforced when dispatch APIs are
-              connected.
+          {isLoading ? (
+            <div className="space-y-3">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-64 w-full" />
             </div>
+          ) : null}
 
-            <div className="flex justify-between">
-              <Button
-                type="button"
-                variant="outline"
-                disabled={step === 0}
-                onClick={() => setStep((s) => Math.max(0, s - 1))}
-              >
-                Back
-              </Button>
-              <Button type="submit">{step === steps.length - 1 ? 'Dispatch Trip' : 'Continue'}</Button>
-            </div>
-          </form>
+          {isError ? (
+            <EmptyState
+              icon={Route}
+              title="Unable to load trips"
+              description="Check API connectivity and try again."
+              actionLabel="Retry"
+              onAction={() => refetch()}
+            />
+          ) : null}
+
+          {!isLoading && !isError && trips.length === 0 ? (
+            <EmptyState
+              icon={Route}
+              title="No trips yet"
+              description="Create your first trip to start dispatching."
+              actionLabel="Create trip"
+              onAction={() => {
+                window.location.href = '/trips/new';
+              }}
+            />
+          ) : null}
+
+          {!isLoading && !isError && trips.length > 0 ? (
+            <>
+              <TripTable
+                data={trips}
+                onDispatch={(trip) => {
+                  setSelected(trip);
+                  setDispatchOpen(true);
+                }}
+                onStart={(trip) => startMutation.mutate(trip._id)}
+                onComplete={(trip) => {
+                  setSelected(trip);
+                  setCompleteOpen(true);
+                }}
+                onCancel={(trip) => {
+                  setSelected(trip);
+                  setCancelOpen(true);
+                }}
+              />
+              <div className="flex items-center justify-between text-sm text-muted-foreground">
+                <span>
+                  Page {meta?.page ?? 1} of {meta?.totalPages ?? 1} · {meta?.total ?? 0} trips
+                </span>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={(meta?.page ?? 1) <= 1}
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  >
+                    Prev
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={(meta?.page ?? 1) >= (meta?.totalPages ?? 1)}
+                    onClick={() => setPage((p) => p + 1)}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            </>
+          ) : null}
         </CardContent>
       </Card>
+
+      <DispatchDialog
+        open={dispatchOpen}
+        trip={selected}
+        loading={dispatchMutation.isPending}
+        onOpenChange={setDispatchOpen}
+        onConfirm={() => {
+          if (!selected) return;
+          dispatchMutation.mutate(selected._id, {
+            onSuccess: () => setDispatchOpen(false),
+          });
+        }}
+      />
+
+      <CompleteTripDialog
+        open={completeOpen}
+        trip={selected}
+        loading={completeMutation.isPending}
+        onOpenChange={setCompleteOpen}
+        onConfirm={(values) => {
+          if (!selected) return;
+          completeMutation.mutate(
+            { id: selected._id, payload: values },
+            { onSuccess: () => setCompleteOpen(false) },
+          );
+        }}
+      />
+
+      <CancelTripDialog
+        open={cancelOpen}
+        trip={selected}
+        loading={cancelMutation.isPending}
+        onOpenChange={setCancelOpen}
+        onConfirm={(values) => {
+          if (!selected) return;
+          cancelMutation.mutate(
+            { id: selected._id, payload: values },
+            { onSuccess: () => setCancelOpen(false) },
+          );
+        }}
+      />
     </div>
   );
 }

@@ -23,6 +23,7 @@ export enum LicenseStatus {
 export enum TripStatus {
   DRAFT = 'DRAFT',
   DISPATCHED = 'DISPATCHED',
+  IN_PROGRESS = 'IN_PROGRESS',
   COMPLETED = 'COMPLETED',
   CANCELLED = 'CANCELLED',
 }
@@ -42,4 +43,13 @@ export enum ExpenseStatus {
 export enum UserAccountStatus {
   ACTIVE = 'ACTIVE',
   INACTIVE = 'INACTIVE',
+}
+
+export enum CargoType {
+  GENERAL = 'GENERAL',
+  FRAGILE = 'FRAGILE',
+  HAZARDOUS = 'HAZARDOUS',
+  PERISHABLE = 'PERISHABLE',
+  BULK = 'BULK',
+  OTHER = 'OTHER',
 }

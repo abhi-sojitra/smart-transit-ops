@@ -11,7 +11,9 @@
     "prebuild": "yarn workspace @transitops/shared-types build",
     "lint": "eslint \"{src,test}/**/*.ts\" --fix",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "seed": "ts-node -r tsconfig-paths/register src/database/seeds/run-seed.ts"
+    "seed": "ts-node -r tsconfig-paths/register src/database/seeds/run-seed.ts",
+    "test": "jest --config ./jest.config.ts --coverage --coverageDirectory=coverage/trip",
+    "test:trip": "jest --config ./jest.config.ts --testPathPattern=modules/trip --coverage"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.12",

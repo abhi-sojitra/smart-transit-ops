@@ -23,19 +23,19 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('login')
-  @ApiOperation({ summary: 'Login (scaffold — not implemented)' })
+  @ApiOperation({ summary: 'Login and receive access/refresh tokens' })
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto.email, dto.password);
   }
 
   @Post('refresh')
-  @ApiOperation({ summary: 'Refresh tokens (scaffold — not implemented)' })
+  @ApiOperation({ summary: 'Refresh access token' })
   refresh(@Body() dto: RefreshDto) {
     return this.authService.refresh(dto.refreshToken);
   }
 
   @Post('logout')
-  @ApiOperation({ summary: 'Logout (scaffold — not implemented)' })
+  @ApiOperation({ summary: 'Logout and invalidate refresh token' })
   logout() {
     return this.authService.logout('unknown');
   }

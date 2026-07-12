@@ -5,6 +5,10 @@ import { LoggerModule } from './logger/logger.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { RolesModule } from './modules/roles/roles.module';
+import { VehicleModule } from './modules/vehicle/vehicle.module';
+import { DriverModule } from './modules/driver/driver.module';
+import { MaintenanceModule } from './modules/maintenance/maintenance.module';
+import { TripModule } from './modules/trip/trip.module';
 import { envValidationSchema } from './config/env.validation';
 import { HealthController } from './health.controller';
 
@@ -19,6 +23,10 @@ import { HealthController } from './health.controller';
     AuthModule,
     UsersModule,
     RolesModule,
+    VehicleModule,
+    DriverModule,
+    MaintenanceModule,
+    TripModule,
   ],
   controllers: [HealthController],
 })

@@ -6,6 +6,7 @@ import { RoleCode, UserAccountStatus } from '@transitops/shared-types';
 import { RoleSchema } from '../../schemas/role.schema';
 import { UserSchema } from '../../schemas/user.schema';
 import { DEFAULT_ROLES } from './roles.seed';
+import { seedTripDispatcherData } from './trip.seed';
 
 loadEnv({ path: resolve(__dirname, '../../../.env') });
 
@@ -51,6 +52,8 @@ async function runSeed() {
     },
     { upsert: true, new: true },
   );
+
+  await seedTripDispatcherData(mongoose);
 
   console.log('Seed completed successfully.');
   await mongoose.disconnect();

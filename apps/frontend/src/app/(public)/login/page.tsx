@@ -11,6 +11,8 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { FormField } from '@/components/forms/form-field';
 import { useAuthStore } from '@/store';
+import { apiClient } from '@/services/api';
+import { toast } from '@/utils/toast';
 
 const loginSchema = z.object({
   email: z.string().email('Enter a valid email'),
@@ -33,13 +35,29 @@ export default function LoginPage() {
     watch,
   } = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: '', password: '', remember: true },
+    defaultValues: {
+      email: 'admin@transitops.com',
+      password: 'Admin@12345',
+      remember: true,
+    },
   });
 
-  const onSubmit = async () => {
-    // Scaffold: set stub tokens and enter the app shell
-    setTokens('stub-access-token', 'stub-refresh-token');
-    router.push('/dashboard');
+  const onSubmit = async (values: LoginValues) => {
+    try {
+      const { data } = await apiClient.post('/auth/login', {
+        email: values.email,
+        password: values.password,
+      });
+      const payload = data?.data ?? data;
+      if (!payload?.accessToken || !payload?.refreshToken) {
+        throw new Error('Login response missing tokens');
+      }
+      setTokens(payload.accessToken, payload.refreshToken);
+      toast.success('Signed in');
+      router.push('/trips');
+    } catch {
+      toast.error('Login failed. Seed the admin user and try again.');
+    }
   };
 
   return (
@@ -110,13 +128,6 @@ export default function LoginPage() {
                 />
                 Remember me
               </label>
-              <button type="button" className="text-sm text-primary hover:underline">
-                Forgot password?
-              </button>
-            </div>
-
-            <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
-              Demo note: authentication API is scaffolded. Submit to enter the UI shell.
             </div>
 
             <Button type="submit" className="w-full" loading={isSubmitting}>
@@ -128,9 +139,6 @@ export default function LoginPage() {
             <Link href="/dashboard" className="hover:text-primary">
               Continue to dashboard
             </Link>
-            <button type="button" className="hover:text-primary">
-              Contact support
-            </button>
           </div>
         </div>
       </div>
