@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -150,10 +149,7 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          <div className="mt-6 flex items-center justify-between text-sm text-slate-400">
-            <Link href="/dashboard" className="hover:text-primary">
-              Continue to dashboard
-            </Link>
+          <div className="mt-6 text-right text-sm text-slate-400">
             <button type="button" className="hover:text-primary">
               Contact support
             </button>

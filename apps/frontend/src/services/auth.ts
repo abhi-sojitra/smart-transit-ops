@@ -1,4 +1,4 @@
-import { apiClient } from '@/services/api';
+import { apiClient, authHttp } from '@/services/api';
 import type { ApiResponse, AuthTokens } from '@transitops/shared-types';
 
 function unwrap<T>(payload: ApiResponse<T> | T): T {
@@ -17,8 +17,9 @@ export const authApi = {
     return unwrap(data);
   },
 
+  /** Uses bare client so refresh never triggers the 401 interceptor. */
   async refresh(refreshToken: string): Promise<AuthTokens> {
-    const { data } = await apiClient.post<ApiResponse<AuthTokens>>('/auth/refresh', {
+    const { data } = await authHttp.post<ApiResponse<AuthTokens>>('/auth/refresh', {
       refreshToken,
     });
     return unwrap(data);

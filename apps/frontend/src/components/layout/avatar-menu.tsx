@@ -8,11 +8,23 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useAuthStore } from '@/store';
+import { authApi } from '@/services/auth';
 import { useRouter } from 'next/navigation';
 
 export function AvatarMenu() {
   const clearAuth = useAuthStore((s) => s.clearAuth);
   const router = useRouter();
+
+  const handleSignOut = async () => {
+    try {
+      await authApi.logout();
+    } catch {
+      // Local session still cleared below even if API revoke fails
+    } finally {
+      clearAuth();
+      router.push('/login');
+    }
+  };
 
   return (
     <DropdownMenu>
@@ -34,12 +46,7 @@ export function AvatarMenu() {
           <Settings className="mr-2 h-4 w-4" />
           Settings
         </DropdownMenuItem>
-        <DropdownMenuItem
-          onClick={() => {
-            clearAuth();
-            router.push('/login');
-          }}
-        >
+        <DropdownMenuItem onClick={() => void handleSignOut()}>
           <LogOut className="mr-2 h-4 w-4" />
           Sign out
         </DropdownMenuItem>

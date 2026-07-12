@@ -27,7 +27,14 @@ export class UserRepository extends BaseRepository<UserDocument> {
   }
 
   update(id: string, data: Partial<User>): Promise<UserDocument | null> {
-    return this.userModel.findByIdAndUpdate(id, data, { new: true }).populate('roles').exec();
+    return this.userModel.findByIdAndUpdate(id, { $set: data }, { new: true }).populate('roles').exec();
+  }
+
+  async clearRefreshToken(id: string): Promise<boolean> {
+    const result = await this.userModel
+      .findByIdAndUpdate(id, { $unset: { refreshTokenHash: 1 } }, { new: true })
+      .exec();
+    return Boolean(result);
   }
 
   async delete(id: string): Promise<boolean> {

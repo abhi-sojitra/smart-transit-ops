@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store';
 import { Sidebar } from '@/components/layout/sidebar';
@@ -9,12 +9,19 @@ import { Navbar } from '@/components/layout/navbar';
 export function ProtectedShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    // Scaffold: allow browsing shell without real auth in development.
-    // Uncomment to enforce redirect:
-    // if (!isAuthenticated) router.replace('/login');
-  }, [isAuthenticated, router]);
+    setHydrated(useAuthStore.persist.hasHydrated());
+    return useAuthStore.persist.onFinishHydration(() => setHydrated(true));
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    if (!isAuthenticated) {
+      router.replace('/login');
+    }
+  }, [hydrated, isAuthenticated, router]);
 
   useEffect(() => {
     const html = document.documentElement;
@@ -33,6 +40,14 @@ export function ProtectedShell({ children }: { children: React.ReactNode }) {
       body.style.height = prevBodyHeight;
     };
   }, []);
+
+  if (!hydrated || !isAuthenticated) {
+    return (
+      <div className="flex h-dvh items-center justify-center bg-background text-sm text-muted-foreground">
+        Checking session…
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-dvh max-h-dvh w-full overflow-hidden bg-background">

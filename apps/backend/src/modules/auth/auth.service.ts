@@ -6,7 +6,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcryptjs';
-import { randomUUID } from 'crypto';
+import { createHash, randomUUID, timingSafeEqual } from 'crypto';
 import {
   RoleCode,
   UserAccountStatus,
@@ -44,6 +44,10 @@ export class AuthService {
     return this.issueTokens(user);
   }
 
+  /**
+   * Rotates refresh tokens on every successful refresh.
+   * If a previously rotated token is presented again, revoke the session.
+   */
   async refresh(refreshToken: string): Promise<AuthTokens> {
     let payload: RefreshTokenPayload;
     try {
@@ -63,16 +67,21 @@ export class AuthService {
       throw new UnauthorizedException('Refresh token has been revoked');
     }
 
-    const matches = await bcrypt.compare(refreshToken, user.refreshTokenHash);
+    const matches = this.refreshTokenMatches(refreshToken, user.refreshTokenHash);
     if (!matches) {
-      throw new UnauthorizedException('Invalid refresh token');
+      // Possible stolen-token reuse after rotation — invalidate session
+      await this.users.clearRefreshToken(String(user._id));
+      throw new UnauthorizedException('Refresh token reuse detected. Please sign in again.');
     }
 
     return this.issueTokens(user);
   }
 
   async logout(userId: string): Promise<{ loggedOut: boolean }> {
-    await this.users.update(userId, { refreshTokenHash: undefined });
+    if (!userId || userId === 'unknown') {
+      return { loggedOut: false };
+    }
+    await this.users.clearRefreshToken(userId);
     return { loggedOut: true };
   }
 
@@ -110,14 +119,28 @@ export class AuthService {
       expiresIn: refreshExpiresIn as `${number}${'s' | 'm' | 'h' | 'd'}`,
     });
 
-    const refreshTokenHash = await bcrypt.hash(refreshToken, 12);
-    await this.users.update(String(user._id), { refreshTokenHash });
+    // SHA-256 (not bcrypt): JWT refresh tokens exceed bcrypt's 72-byte input limit,
+    // so bcrypt would ignore the unique suffix and make rotation reuse-detection fail.
+    await this.users.update(String(user._id), {
+      refreshTokenHash: this.hashRefreshToken(refreshToken),
+    });
 
     return {
       accessToken,
       refreshToken,
       expiresIn: this.parseExpirySeconds(accessExpiresIn),
     };
+  }
+
+  private hashRefreshToken(token: string): string {
+    return createHash('sha256').update(token).digest('hex');
+  }
+
+  private refreshTokenMatches(token: string, storedHash: string): boolean {
+    const incoming = Buffer.from(this.hashRefreshToken(token), 'utf8');
+    const stored = Buffer.from(storedHash, 'utf8');
+    if (incoming.length !== stored.length) return false;
+    return timingSafeEqual(incoming, stored);
   }
 
   private extractRoleCodes(user: UserDocument): RoleCode[] {
