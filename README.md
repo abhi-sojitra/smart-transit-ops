@@ -38,8 +38,9 @@ yarn dev:backend
 - Frontend: http://localhost:3000
 - Backend API: http://localhost:4000/api
 - Swagger: http://localhost:4000/api/docs
+- Trips UI: http://localhost:3000/trips
 
-## Seed (roles + admin user)
+## Seed (roles, admin, drivers, fleet, 50 trips)
 
 ```bash
 yarn workspace @transitops/backend seed
@@ -69,6 +70,10 @@ yarn workspace @transitops/backend seed:all
 
 See `apps/backend/FUEL_EXPENSE_README.md` for full module documentation.
 
+## Trip Dispatcher
+
+See [`apps/backend/src/modules/trip/README.md`](apps/backend/src/modules/trip/README.md) for APIs, RBAC, business rules, and workflow.
+
 ## Scripts
 
 | Command | Description |
@@ -77,12 +82,15 @@ See `apps/backend/FUEL_EXPENSE_README.md` for full module documentation.
 | `yarn lint` | Lint all workspaces |
 | `yarn typecheck` | Typecheck all workspaces |
 | `yarn format` | Prettier format |
+| `yarn workspace @transitops/backend test:trip` | Trip module unit tests |
+| `yarn workspace @transitops/backend seed:all` | Seed users + fuel/expense demo data |
 
 ## Notes
 
-- Auth login/refresh are scaffolded (NotImplemented on API; UI shell uses stub tokens).
+- Auth login/refresh are implemented (JWT with refresh rotation).
 - **Fuel & Expense Management** is fully implemented with CRUD APIs, analytics, and UI.
-- Other module screens (Fleet, Drivers, Trips, etc.) are UI shells with mock data.
+- **Trip Dispatcher** is fully wired (API + UI) and integrates with Vehicle, Driver, and Maintenance services.
+- **Driver Module** is fully implemented.
 - If fuel/expense APIs return **404**, restart the backend so it loads the latest modules:
   ```bash
   # stop any old process on port 4000, then:

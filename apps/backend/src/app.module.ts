@@ -8,6 +8,9 @@ import { RolesModule } from './modules/roles/roles.module';
 import { DriverModule } from './modules/driver/driver.module';
 import { FuelModule } from './modules/fuel/fuel.module';
 import { ExpenseModule } from './modules/expense/expense.module';
+import { VehicleModule } from './modules/vehicle/vehicle.module';
+import { MaintenanceModule } from './modules/maintenance/maintenance.module';
+import { TripModule } from './modules/trip/trip.module';
 import { envValidationSchema } from './config/env.validation';
 import { HealthController } from './health.controller';
 
@@ -25,6 +28,9 @@ import { HealthController } from './health.controller';
     DriverModule,
     FuelModule,
     ExpenseModule,
+    VehicleModule,
+    MaintenanceModule,
+    TripModule,
   ],
   controllers: [HealthController],
 })
