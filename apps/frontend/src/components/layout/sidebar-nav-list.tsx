@@ -1,16 +1,18 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
 import {
   NAV_ITEMS,
+  filterNavByPermissions,
   isNavActive,
   isNavSectionActive,
   type NavItem,
 } from '@/constants/nav';
+import { useUserPermissions } from '@/hooks/use-permissions';
 import { cn } from '@/utils/cn';
 
 function childLinkClass(active: boolean, nested: boolean) {
@@ -139,6 +141,11 @@ export function SidebarNavList({
   collapsed?: boolean;
 }) {
   const pathname = usePathname();
+  const { permissions, isLoading } = useUserPermissions();
+  const items = useMemo(
+    () => (isLoading ? [] : filterNavByPermissions(NAV_ITEMS, permissions)),
+    [isLoading, permissions],
+  );
 
   return (
     <nav
@@ -147,7 +154,7 @@ export function SidebarNavList({
         !collapsed && 'min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-2',
       )}
     >
-      {NAV_ITEMS.map((item) => {
+      {items.map((item) => {
         const Icon = item.icon;
         const sectionActive = isNavSectionActive(pathname, item);
         const hasChildren = Boolean(item.children?.length);

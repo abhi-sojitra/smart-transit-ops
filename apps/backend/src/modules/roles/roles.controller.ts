@@ -10,10 +10,10 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { RoleCode, type JwtPayload } from '@transitops/shared-types';
+import { type JwtPayload } from '@transitops/shared-types';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { JwtAuthGuard, RolesGuard } from '../../common/guards/auth.guards';
+import { RequirePermissions } from '../../common/decorators/permissions.decorator';
+import { JwtAuthGuard, PermissionsGuard, RolesGuard } from '../../common/guards/auth.guards';
 import {
   CloneRolePermissionsDto,
   RoleQueryDto,
@@ -21,31 +21,29 @@ import {
 } from './dto/role.dto';
 import { RolesService } from './roles.service';
 
-const ADMIN_ROLES = [RoleCode.SUPER_ADMIN, RoleCode.ADMIN] as const;
-
 @ApiTags('Roles')
 @ApiBearerAuth()
 @Controller('roles')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard, RolesGuard)
 export class RolesController {
   constructor(private readonly rolesService: RolesService) {}
 
   @Get()
-  @Roles(...ADMIN_ROLES)
+  @RequirePermissions('ROLES:VIEW')
   @ApiOperation({ summary: 'List roles' })
   findAll(@Query() query: RoleQueryDto) {
     return this.rolesService.findAll(query);
   }
 
   @Get(':id')
-  @Roles(...ADMIN_ROLES)
+  @RequirePermissions('ROLES:VIEW')
   @ApiOperation({ summary: 'Get role by id' })
   findOne(@Param('id') id: string) {
     return this.rolesService.findById(id);
   }
 
   @Patch(':id')
-  @Roles(...ADMIN_ROLES)
+  @RequirePermissions('ROLES:UPDATE')
   @ApiOperation({ summary: 'Update role name, description, or permissions' })
   update(
     @Param('id') id: string,
@@ -56,7 +54,7 @@ export class RolesController {
   }
 
   @Post(':id/clone-permissions')
-  @Roles(...ADMIN_ROLES)
+  @RequirePermissions('ROLES:UPDATE')
   @ApiOperation({ summary: 'Clone permissions from this role onto another role' })
   clonePermissions(
     @Param('id') id: string,
@@ -67,7 +65,7 @@ export class RolesController {
   }
 
   @Post(':id/assign-users')
-  @Roles(...ADMIN_ROLES)
+  @RequirePermissions('ROLES:UPDATE')
   @ApiOperation({ summary: 'Assign this role to users' })
   assignUsers(
     @Param('id') id: string,
@@ -78,7 +76,7 @@ export class RolesController {
   }
 
   @Delete(':id')
-  @Roles(...ADMIN_ROLES)
+  @RequirePermissions('ROLES:DELETE')
   @ApiOperation({ summary: 'Delete a non-system role' })
   remove(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
     return this.rolesService.remove(id, user);

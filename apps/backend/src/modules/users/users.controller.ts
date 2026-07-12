@@ -12,8 +12,8 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { RoleCode, type JwtPayload } from '@transitops/shared-types';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { JwtAuthGuard, RolesGuard } from '../../common/guards/auth.guards';
+import { RequirePermissions } from '../../common/decorators/permissions.decorator';
+import { JwtAuthGuard, PermissionsGuard, RolesGuard } from '../../common/guards/auth.guards';
 import {
   AssignRolesDto,
   BulkDeleteDto,
@@ -24,59 +24,57 @@ import {
 } from './dto/user.dto';
 import { UsersService } from './users.service';
 
-const ADMIN_ROLES = [RoleCode.SUPER_ADMIN, RoleCode.ADMIN] as const;
-
 @ApiTags('Users')
 @ApiBearerAuth()
 @Controller('users')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard, RolesGuard)
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Get()
-  @Roles(...ADMIN_ROLES)
+  @RequirePermissions('USERS:VIEW')
   @ApiOperation({ summary: 'List users with search, filters, pagination' })
   findAll(@Query() query: UserQueryDto) {
     return this.usersService.findAll(query);
   }
 
   @Post()
-  @Roles(...ADMIN_ROLES)
+  @RequirePermissions('USERS:CREATE')
   @ApiOperation({ summary: 'Create user' })
   create(@Body() dto: CreateUserDto, @CurrentUser() user: JwtPayload) {
     return this.usersService.create(dto, user);
   }
 
   @Post('bulk/status')
-  @Roles(...ADMIN_ROLES)
+  @RequirePermissions('USERS:UPDATE')
   @ApiOperation({ summary: 'Bulk update user status' })
   bulkStatus(@Body() dto: BulkStatusDto, @CurrentUser() user: JwtPayload) {
     return this.usersService.bulkStatus(dto, user);
   }
 
   @Post('bulk/delete')
-  @Roles(...ADMIN_ROLES)
+  @RequirePermissions('USERS:DELETE')
   @ApiOperation({ summary: 'Bulk soft-delete users' })
   bulkDelete(@Body() dto: BulkDeleteDto, @CurrentUser() user: JwtPayload) {
     return this.usersService.bulkDelete(dto, user);
   }
 
   @Get(':id')
-  @Roles(...ADMIN_ROLES)
+  @RequirePermissions('USERS:VIEW')
   @ApiOperation({ summary: 'Get user by id' })
   findOne(@Param('id') id: string) {
     return this.usersService.findById(id);
   }
 
   @Get(':id/permissions')
-  @Roles(...ADMIN_ROLES)
+  @RequirePermissions('USERS:VIEW')
   @ApiOperation({ summary: 'Get effective permissions for a user' })
   getPermissions(@Param('id') id: string) {
     return this.usersService.getUserPermissions(id);
   }
 
   @Patch(':id')
-  @Roles(...ADMIN_ROLES)
+  @RequirePermissions('USERS:UPDATE')
   @ApiOperation({ summary: 'Update user' })
   update(
     @Param('id') id: string,
@@ -87,7 +85,7 @@ export class UsersController {
   }
 
   @Post(':id/roles')
-  @Roles(...ADMIN_ROLES)
+  @RequirePermissions('USERS:UPDATE')
   @ApiOperation({ summary: 'Assign roles to user' })
   assignRole(
     @Param('id') id: string,
@@ -98,7 +96,7 @@ export class UsersController {
   }
 
   @Delete(':id/roles/:roleCode')
-  @Roles(...ADMIN_ROLES)
+  @RequirePermissions('USERS:UPDATE')
   @ApiOperation({ summary: 'Remove a role from user' })
   removeRole(
     @Param('id') id: string,
@@ -109,7 +107,7 @@ export class UsersController {
   }
 
   @Delete(':id')
-  @Roles(...ADMIN_ROLES)
+  @RequirePermissions('USERS:DELETE')
   @ApiOperation({ summary: 'Soft-delete user' })
   remove(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
     return this.usersService.remove(id, user);

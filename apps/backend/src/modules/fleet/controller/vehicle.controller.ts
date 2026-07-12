@@ -19,9 +19,9 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { RoleCode, type JwtPayload } from '@transitops/shared-types';
-import { JwtAuthGuard, RolesGuard } from '../../../common/guards/auth.guards';
-import { Roles } from '../../../common/decorators/roles.decorator';
+import { type JwtPayload } from '@transitops/shared-types';
+import { JwtAuthGuard, PermissionsGuard, RolesGuard } from '../../../common/guards/auth.guards';
+import { RequirePermissions } from '../../../common/decorators/permissions.decorator';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { VehicleService } from '../service/vehicle.service';
 import { CreateVehicleDto } from '../dto/create-vehicle.dto';
@@ -38,12 +38,12 @@ import {
 @ApiTags('Fleet')
 @ApiBearerAuth()
 @Controller('vehicles')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard, RolesGuard)
 export class VehicleController {
   constructor(private readonly vehicleService: VehicleService) {}
 
   @Post()
-  @Roles(RoleCode.SUPER_ADMIN, RoleCode.ADMIN, RoleCode.FLEET_MANAGER)
+  @RequirePermissions('VEHICLE:CREATE')
   @ApiOperation({
     summary: 'Create vehicle',
     description:
@@ -60,13 +60,7 @@ export class VehicleController {
   }
 
   @Get()
-  @Roles(
-    RoleCode.SUPER_ADMIN,
-    RoleCode.ADMIN,
-    RoleCode.FLEET_MANAGER,
-    RoleCode.SAFETY_OFFICER,
-    RoleCode.DISPATCHER,
-  )
+  @RequirePermissions('VEHICLE:VIEW')
   @ApiOperation({
     summary: 'List vehicles',
     description: 'Paginated vehicle list with search, filters, and sorting. Soft-deleted vehicles are excluded.',
@@ -79,13 +73,7 @@ export class VehicleController {
   }
 
   @Get('available')
-  @Roles(
-    RoleCode.SUPER_ADMIN,
-    RoleCode.ADMIN,
-    RoleCode.FLEET_MANAGER,
-    RoleCode.SAFETY_OFFICER,
-    RoleCode.DISPATCHER,
-  )
+  @RequirePermissions('VEHICLE:VIEW')
   @ApiOperation({
     summary: 'List available vehicles',
     description:
@@ -98,13 +86,7 @@ export class VehicleController {
   }
 
   @Get('statistics')
-  @Roles(
-    RoleCode.SUPER_ADMIN,
-    RoleCode.ADMIN,
-    RoleCode.FLEET_MANAGER,
-    RoleCode.SAFETY_OFFICER,
-    RoleCode.DISPATCHER,
-  )
+  @RequirePermissions('VEHICLE:VIEW')
   @ApiOperation({
     summary: 'Vehicle statistics',
     description:
@@ -117,15 +99,7 @@ export class VehicleController {
   }
 
   @Get(':id')
-  @Roles(
-    RoleCode.SUPER_ADMIN,
-    RoleCode.ADMIN,
-    RoleCode.FLEET_MANAGER,
-    RoleCode.SAFETY_OFFICER,
-    RoleCode.DISPATCHER,
-    RoleCode.OPERATOR,
-    RoleCode.VIEWER,
-  )
+  @RequirePermissions('VEHICLE:VIEW')
   @ApiOperation({
     summary: 'Get vehicle details',
     description: 'Returns a single vehicle by id. Soft-deleted vehicles are not returned.',
@@ -139,7 +113,7 @@ export class VehicleController {
   }
 
   @Patch(':id')
-  @Roles(RoleCode.SUPER_ADMIN, RoleCode.ADMIN, RoleCode.FLEET_MANAGER)
+  @RequirePermissions('VEHICLE:UPDATE')
   @ApiOperation({ summary: 'Update vehicle', description: 'Partial update of vehicle profile fields.' })
   @ApiParam({ name: 'id' })
   @ApiBody({ type: UpdateVehicleDto })
@@ -157,7 +131,7 @@ export class VehicleController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
-  @Roles(RoleCode.SUPER_ADMIN, RoleCode.ADMIN, RoleCode.FLEET_MANAGER)
+  @RequirePermissions('VEHICLE:DELETE')
   @ApiOperation({
     summary: 'Soft-delete vehicle',
     description: 'Marks the vehicle as deleted. Deleted vehicles never appear in list endpoints.',
@@ -170,7 +144,7 @@ export class VehicleController {
   }
 
   @Patch(':id/status')
-  @Roles(RoleCode.SUPER_ADMIN, RoleCode.ADMIN, RoleCode.FLEET_MANAGER, RoleCode.DISPATCHER)
+  @RequirePermissions('VEHICLE:UPDATE')
   @ApiOperation({
     summary: 'Update vehicle status',
     description:
@@ -190,7 +164,7 @@ export class VehicleController {
   }
 
   @Patch(':id/mileage')
-  @Roles(RoleCode.SUPER_ADMIN, RoleCode.ADMIN, RoleCode.FLEET_MANAGER, RoleCode.OPERATOR)
+  @RequirePermissions('VEHICLE:UPDATE')
   @ApiOperation({
     summary: 'Update vehicle mileage',
     description: 'Sets the current odometer reading. Mileage cannot decrease.',

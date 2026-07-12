@@ -186,6 +186,7 @@ export class UsersService {
     for (const role of roles) {
       for (const permission of role.permissions ?? []) set.add(permission);
     }
+    if (set.has('*')) return ['*'];
     return Array.from(set);
   };
 }

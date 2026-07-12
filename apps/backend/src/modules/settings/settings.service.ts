@@ -144,9 +144,9 @@ export class SettingsService {
     if (!user) throw new NotFoundException('User not found');
     const mapped = mapUser(user);
     const roles = (user.roles ?? []) as Array<{ permissions?: string[] }>;
-    const permissions = Array.from(
-      new Set(roles.flatMap((r) => r.permissions ?? [])),
-    );
+    const raw = Array.from(new Set(roles.flatMap((r) => r.permissions ?? [])));
+    // Keep "*" so clients can treat Super Admin as full access without expanding catalog.
+    const permissions = raw.includes('*') ? ['*'] : raw;
     return { ...mapped, permissions };
   }
 

@@ -19,9 +19,9 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { RoleCode, type JwtPayload } from '@transitops/shared-types';
-import { JwtAuthGuard, RolesGuard } from '../../../common/guards/auth.guards';
-import { Roles } from '../../../common/decorators/roles.decorator';
+import { type JwtPayload } from '@transitops/shared-types';
+import { JwtAuthGuard, PermissionsGuard, RolesGuard } from '../../../common/guards/auth.guards';
+import { RequirePermissions } from '../../../common/decorators/permissions.decorator';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { DriverService } from '../service/driver.service';
 import { CreateDriverDto } from '../dto/create-driver.dto';
@@ -38,12 +38,12 @@ import {
 @ApiTags('Drivers')
 @ApiBearerAuth()
 @Controller('drivers')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard, RolesGuard)
 export class DriverController {
   constructor(private readonly driverService: DriverService) {}
 
   @Post()
-  @Roles(RoleCode.SUPER_ADMIN, RoleCode.ADMIN, RoleCode.FLEET_MANAGER)
+  @RequirePermissions('DRIVER:CREATE')
   @ApiOperation({
     summary: 'Create driver',
     description: 'Creates a new driver profile. Employee code, email, phone, and license number must be unique.',
@@ -59,13 +59,7 @@ export class DriverController {
   }
 
   @Get()
-  @Roles(
-    RoleCode.SUPER_ADMIN,
-    RoleCode.ADMIN,
-    RoleCode.FLEET_MANAGER,
-    RoleCode.SAFETY_OFFICER,
-    RoleCode.DISPATCHER,
-  )
+  @RequirePermissions('DRIVER:VIEW')
   @ApiOperation({
     summary: 'List drivers',
     description: 'Paginated driver list with search, filters, and sorting. Soft-deleted drivers are excluded.',
@@ -78,13 +72,7 @@ export class DriverController {
   }
 
   @Get('available')
-  @Roles(
-    RoleCode.SUPER_ADMIN,
-    RoleCode.ADMIN,
-    RoleCode.FLEET_MANAGER,
-    RoleCode.SAFETY_OFFICER,
-    RoleCode.DISPATCHER,
-  )
+  @RequirePermissions('DRIVER:VIEW')
   @ApiOperation({
     summary: 'List available drivers',
     description: 'Returns drivers with Available status and a non-expired license. Intended for Trip assignment.',
@@ -96,13 +84,7 @@ export class DriverController {
   }
 
   @Get('statistics')
-  @Roles(
-    RoleCode.SUPER_ADMIN,
-    RoleCode.ADMIN,
-    RoleCode.FLEET_MANAGER,
-    RoleCode.SAFETY_OFFICER,
-    RoleCode.DISPATCHER,
-  )
+  @RequirePermissions('DRIVER:VIEW')
   @ApiOperation({
     summary: 'Driver statistics',
     description: 'Aggregate counts for dashboard cards including license-expiring and average safety score.',
@@ -114,15 +96,7 @@ export class DriverController {
   }
 
   @Get(':id')
-  @Roles(
-    RoleCode.SUPER_ADMIN,
-    RoleCode.ADMIN,
-    RoleCode.FLEET_MANAGER,
-    RoleCode.SAFETY_OFFICER,
-    RoleCode.DISPATCHER,
-    RoleCode.OPERATOR,
-    RoleCode.VIEWER,
-  )
+  @RequirePermissions('DRIVER:VIEW')
   @ApiOperation({
     summary: 'Get driver details',
     description: 'Returns a single driver by id. Soft-deleted drivers are not returned.',
@@ -136,7 +110,7 @@ export class DriverController {
   }
 
   @Patch(':id')
-  @Roles(RoleCode.SUPER_ADMIN, RoleCode.ADMIN, RoleCode.FLEET_MANAGER)
+  @RequirePermissions('DRIVER:UPDATE')
   @ApiOperation({ summary: 'Update driver', description: 'Partial update of driver profile fields.' })
   @ApiParam({ name: 'id' })
   @ApiBody({ type: UpdateDriverDto })
@@ -154,7 +128,7 @@ export class DriverController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
-  @Roles(RoleCode.SUPER_ADMIN, RoleCode.ADMIN, RoleCode.FLEET_MANAGER)
+  @RequirePermissions('DRIVER:DELETE')
   @ApiOperation({
     summary: 'Soft-delete driver',
     description: 'Marks the driver as deleted. Deleted drivers never appear in list endpoints.',
@@ -167,12 +141,7 @@ export class DriverController {
   }
 
   @Patch(':id/status')
-  @Roles(
-    RoleCode.SUPER_ADMIN,
-    RoleCode.ADMIN,
-    RoleCode.FLEET_MANAGER,
-    RoleCode.SAFETY_OFFICER,
-  )
+  @RequirePermissions('DRIVER:UPDATE')
   @ApiOperation({
     summary: 'Update driver status',
     description:
@@ -192,12 +161,7 @@ export class DriverController {
   }
 
   @Patch(':id/safety-score')
-  @Roles(
-    RoleCode.SUPER_ADMIN,
-    RoleCode.ADMIN,
-    RoleCode.FLEET_MANAGER,
-    RoleCode.SAFETY_OFFICER,
-  )
+  @RequirePermissions('DRIVER:UPDATE')
   @ApiOperation({
     summary: 'Update safety score',
     description: 'Sets driver safety score in the range 0–100.',

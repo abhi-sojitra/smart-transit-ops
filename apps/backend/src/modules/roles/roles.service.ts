@@ -7,6 +7,7 @@ import { RoleCode, type AdminRole, type JwtPayload } from '@transitops/shared-ty
 import { RoleRepository } from '../../repositories/role.repository';
 import { UserRepository } from '../../repositories/user.repository';
 import { AuditLogRepository } from '../../repositories/audit-log.repository';
+import { buildPermissionCatalog } from '../permissions/permission.catalog';
 import type { CloneRolePermissionsDto, RoleQueryDto, UpdateRoleDto } from './dto/role.dto';
 
 function mapRole(
@@ -61,9 +62,28 @@ export class RolesService {
     return mapRole(doc, userCount);
   }
 
+  private assertValidPermissions(permissions: string[] | undefined, roleCode: RoleCode) {
+    if (!permissions) return;
+    if (permissions.includes('*')) {
+      if (roleCode !== RoleCode.SUPER_ADMIN) {
+        throw new BadRequestException('Only Super Admin may use the "*" permission');
+      }
+      return;
+    }
+    const catalog = new Set(buildPermissionCatalog().map((p) => p.code));
+    const invalid = permissions.filter((code) => !catalog.has(code));
+    if (invalid.length) {
+      throw new BadRequestException(
+        `Unknown permission codes: ${invalid.slice(0, 8).join(', ')}`,
+      );
+    }
+  }
+
   async update(id: string, dto: UpdateRoleDto, actor?: JwtPayload) {
     const existing = await this.roles.findById(id);
     if (!existing) throw new NotFoundException('Role not found');
+
+    this.assertValidPermissions(dto.permissions, existing.code);
 
     const updated = await this.roles.update(id, {
       name: dto.name,
