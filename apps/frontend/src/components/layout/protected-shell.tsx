@@ -16,12 +16,32 @@ export function ProtectedShell({ children }: { children: React.ReactNode }) {
     // if (!isAuthenticated) router.replace('/login');
   }, [isAuthenticated, router]);
 
+  useEffect(() => {
+    const html = document.documentElement;
+    const { body } = document;
+    const prevHtmlOverflow = html.style.overflow;
+    const prevBodyOverflow = body.style.overflow;
+    const prevBodyHeight = body.style.height;
+
+    html.style.overflow = 'hidden';
+    body.style.overflow = 'hidden';
+    body.style.height = '100%';
+
+    return () => {
+      html.style.overflow = prevHtmlOverflow;
+      body.style.overflow = prevBodyOverflow;
+      body.style.height = prevBodyHeight;
+    };
+  }, []);
+
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex h-dvh max-h-dvh w-full overflow-hidden bg-background">
       <Sidebar />
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <Navbar />
-        <main className="flex-1 overflow-y-auto p-4 md:p-6">{children}</main>
+        <main className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-4 md:p-6">
+          {children}
+        </main>
       </div>
     </div>
   );

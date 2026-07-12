@@ -23,11 +23,11 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
       animate={{ width: sidebarCollapsed ? 72 : 260 }}
       transition={{ duration: 0.2, ease: 'easeInOut' }}
       className={cn(
-        'hidden h-screen shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex',
+        'hidden h-full max-h-dvh shrink-0 flex-col overflow-hidden border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex',
         className,
       )}
     >
-      <div className="flex h-14 items-center justify-between border-b border-sidebar-border px-3">
+      <div className="flex h-14 shrink-0 items-center justify-between border-b border-sidebar-border px-3">
         {!sidebarCollapsed ? (
           <Link href="/dashboard" className="flex items-center gap-2 font-semibold tracking-tight">
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-sm text-primary-foreground">
@@ -55,14 +55,14 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
       </div>
 
       {sidebarCollapsed ? (
-        <div className="flex justify-center py-2">
+        <div className="flex shrink-0 justify-center py-2">
           <Button variant="ghost" size="icon" onClick={toggleSidebar} aria-label="Expand sidebar">
             <PanelLeftOpen className="h-4 w-4" />
           </Button>
         </div>
       ) : null}
 
-      <nav className="flex-1 space-y-1 overflow-y-auto p-2">
+      <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-y-contain p-2">
         {NAV_ITEMS.map((item) => {
           const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
           const Icon = item.icon;

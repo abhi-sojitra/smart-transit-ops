@@ -2,15 +2,19 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { AxiosError } from 'axios';
+import { toast } from 'sonner';
 import { APP_NAME } from '@/constants/nav';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { FormField } from '@/components/forms/form-field';
 import { useAuthStore } from '@/store';
+import { authApi } from '@/services/auth';
 
 const loginSchema = z.object({
   email: z.string().email('Enter a valid email'),
@@ -25,6 +29,7 @@ const roles = ['Fleet Manager', 'Dispatcher', 'Safety Officer', 'Financial Analy
 export default function LoginPage() {
   const router = useRouter();
   const setTokens = useAuthStore((s) => s.setTokens);
+  const [formError, setFormError] = useState<string | null>(null);
   const {
     register,
     handleSubmit,
@@ -33,13 +38,28 @@ export default function LoginPage() {
     watch,
   } = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: '', password: '', remember: true },
+    defaultValues: {
+      email: 'admin@transitops.com',
+      password: 'Admin@12345',
+      remember: true,
+    },
   });
 
-  const onSubmit = async () => {
-    // Scaffold: set stub tokens and enter the app shell
-    setTokens('stub-access-token', 'stub-refresh-token');
-    router.push('/dashboard');
+  const onSubmit = async (values: LoginValues) => {
+    setFormError(null);
+    try {
+      const tokens = await authApi.login(values.email, values.password);
+      setTokens(tokens.accessToken, tokens.refreshToken);
+      toast.success('Signed in successfully');
+      router.push('/dashboard');
+    } catch (error) {
+      const message =
+        error instanceof AxiosError
+          ? ((error.response?.data as { message?: string })?.message ?? error.message)
+          : 'Unable to sign in';
+      setFormError(message);
+      toast.error(message);
+    }
   };
 
   return (
@@ -115,9 +135,15 @@ export default function LoginPage() {
               </button>
             </div>
 
-            <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
-              Demo note: authentication API is scaffolded. Submit to enter the UI shell.
-            </div>
+            {formError ? (
+              <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+                {formError}
+              </div>
+            ) : (
+              <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-300">
+                Demo: admin@transitops.com / Admin@12345
+              </div>
+            )}
 
             <Button type="submit" className="w-full" loading={isSubmitting}>
               Sign In

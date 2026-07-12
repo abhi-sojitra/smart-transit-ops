@@ -1,8 +1,6 @@
 import type { RoleCode } from './auth';
 import type {
-  DriverStatus,
   ExpenseStatus,
-  LicenseStatus,
   MaintenanceStatus,
   TripStatus,
   UserAccountStatus,
@@ -39,16 +37,8 @@ export interface Vehicle {
   mileage: number;
 }
 
-export interface Driver {
-  id: string;
-  name: string;
-  employeeId: string;
-  licenseType?: string;
-  licenseStatus: LicenseStatus;
-  lastTrip?: string;
-  safetyScore: number;
-  status: DriverStatus;
-}
+/** Re-exported from driver.ts for backward compatibility */
+export type { Driver } from './driver';
 
 export interface Trip {
   id: string;

@@ -11,7 +11,10 @@
     "prebuild": "yarn workspace @transitops/shared-types build",
     "lint": "eslint \"{src,test}/**/*.ts\" --fix",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "seed": "ts-node -r tsconfig-paths/register src/database/seeds/run-seed.ts"
+    "seed": "ts-node -r tsconfig-paths/register src/database/seeds/run-seed.ts",
+    "test": "jest --config jest.config.ts",
+    "test:watch": "jest --config jest.config.ts --watch",
+    "test:cov": "jest --config jest.config.ts --coverage"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.12",
@@ -41,12 +44,16 @@
   "devDependencies": {
     "@nestjs/cli": "^11.0.6",
     "@nestjs/schematics": "^11.0.3",
+    "@nestjs/testing": "^11.1.28",
     "@types/bcryptjs": "^2.4.6",
     "@types/compression": "^1.7.5",
     "@types/express": "^5.0.1",
+    "@types/jest": "^30.0.0",
     "@types/node": "^22.13.10",
     "@types/passport-jwt": "^4.0.1",
     "eslint": "^9.22.0",
+    "jest": "^30.4.2",
+    "ts-jest": "^29.4.11",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.8.2"

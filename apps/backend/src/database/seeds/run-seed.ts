@@ -5,6 +5,8 @@ import { resolve } from 'path';
 import { RoleCode, UserAccountStatus } from '@transitops/shared-types';
 import { RoleSchema } from '../../schemas/role.schema';
 import { UserSchema } from '../../schemas/user.schema';
+import { DriverSchema } from '../../modules/driver/schema/driver.schema';
+import { buildDemoDrivers } from '../../modules/driver/seeds/driver.seed';
 import { DEFAULT_ROLES } from './roles.seed';
 
 loadEnv({ path: resolve(__dirname, '../../../.env') });
@@ -18,6 +20,7 @@ async function runSeed() {
   await mongoose.connect(uri);
   const RoleModel = mongoose.model('Role', RoleSchema);
   const UserModel = mongoose.model('User', UserSchema);
+  const DriverModel = mongoose.models.Driver ?? mongoose.model('Driver', DriverSchema);
 
   console.log('Seeding roles...');
   const roleIds: Record<string, mongoose.Types.ObjectId> = {};
@@ -51,6 +54,16 @@ async function runSeed() {
     },
     { upsert: true, new: true },
   );
+
+  console.log('Seeding 20 demo drivers...');
+  const demoDrivers = buildDemoDrivers(20);
+  for (const driver of demoDrivers) {
+    await DriverModel.findOneAndUpdate(
+      { employeeCode: driver.employeeCode },
+      { $set: driver },
+      { upsert: true, new: true },
+    );
+  }
 
   console.log('Seed completed successfully.');
   await mongoose.disconnect();
