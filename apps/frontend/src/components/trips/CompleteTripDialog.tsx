@@ -12,15 +12,19 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { FormField } from '@/components/forms/form-field';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { InputAffix } from '@/components/ui/input-affix';
+import { CharacterCountTextarea } from '@/components/ui/character-count-textarea';
+import { DEFAULT_FORM_OPTIONS, FORM_LIMITS, PLACEHOLDERS } from '@/constants/form';
+import { positiveDecimal, sanitizeTextInput } from '@/utils/form-sanitize';
+import { enhanceRegister } from '@/utils/form-register';
+import { nonNegativeAmountField } from '@/utils/form-validation';
 import type { TripRecord } from '@/types/trip';
 
 const schema = z.object({
-  actualDistance: z.coerce.number().min(0),
-  fuelConsumed: z.coerce.number().min(0),
-  actualRevenue: z.coerce.number().min(0),
-  notes: z.string().optional(),
+  actualDistance: nonNegativeAmountField('Actual distance'),
+  fuelConsumed: nonNegativeAmountField('Fuel consumed'),
+  actualRevenue: nonNegativeAmountField('Actual revenue'),
+  notes: z.string().max(FORM_LIMITS.textarea).optional(),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -45,6 +49,7 @@ export function CompleteTripDialog({
     handleSubmit,
     formState: { errors },
   } = useForm<FormValues>({
+    ...DEFAULT_FORM_OPTIONS,
     resolver: zodResolver(schema),
     values: {
       actualDistance: trip?.plannedDistance ?? 0,
@@ -63,18 +68,62 @@ export function CompleteTripDialog({
             Capture actual distance, fuel consumed, and revenue. Vehicle and driver return to Available.
           </DialogDescription>
         </DialogHeader>
-        <form className="space-y-4" onSubmit={handleSubmit(onConfirm)}>
-          <FormField label="Actual distance (mi)" htmlFor="actualDistance" error={errors.actualDistance?.message}>
-            <Input id="actualDistance" type="number" step="0.1" {...register('actualDistance')} />
+        <form className="space-y-4" onSubmit={handleSubmit(onConfirm)} noValidate>
+          <FormField
+            label="Actual Distance"
+            htmlFor="actualDistance"
+            required
+            error={errors.actualDistance?.message}
+          >
+            <InputAffix
+              id="actualDistance"
+              suffix="km"
+              inputMode="decimal"
+              placeholder={PLACEHOLDERS.distance}
+              {...enhanceRegister(register('actualDistance'), {
+                transform: (v) => positiveDecimal(String(v)),
+              })}
+            />
           </FormField>
-          <FormField label="Fuel consumed" htmlFor="fuelConsumed" error={errors.fuelConsumed?.message}>
-            <Input id="fuelConsumed" type="number" step="0.1" {...register('fuelConsumed')} />
+          <FormField
+            label="Fuel Consumed"
+            htmlFor="fuelConsumed"
+            required
+            error={errors.fuelConsumed?.message}
+          >
+            <InputAffix
+              id="fuelConsumed"
+              suffix="L"
+              inputMode="decimal"
+              placeholder={PLACEHOLDERS.fuelQuantity}
+              {...enhanceRegister(register('fuelConsumed'), {
+                transform: (v) => positiveDecimal(String(v)),
+              })}
+            />
           </FormField>
-          <FormField label="Actual revenue" htmlFor="actualRevenue" error={errors.actualRevenue?.message}>
-            <Input id="actualRevenue" type="number" step="0.01" {...register('actualRevenue')} />
+          <FormField
+            label="Actual Revenue"
+            htmlFor="actualRevenue"
+            required
+            error={errors.actualRevenue?.message}
+          >
+            <InputAffix
+              id="actualRevenue"
+              prefix="₹"
+              inputMode="decimal"
+              placeholder={PLACEHOLDERS.amount}
+              {...enhanceRegister(register('actualRevenue'), {
+                transform: (v) => positiveDecimal(String(v)),
+              })}
+            />
           </FormField>
-          <FormField label="Notes" htmlFor="completeNotes">
-            <Textarea id="completeNotes" {...register('notes')} />
+          <FormField label="Notes" htmlFor="completeNotes" error={errors.notes?.message}>
+            <CharacterCountTextarea
+              id="completeNotes"
+              maxLength={FORM_LIMITS.textarea}
+              placeholder={PLACEHOLDERS.notes}
+              {...register('notes')}
+            />
           </FormField>
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

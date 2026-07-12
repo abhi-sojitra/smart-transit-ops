@@ -113,17 +113,25 @@ export class DashboardService {
 
   async getRecentTrips(limit = 10): Promise<RecentTripItem[]> {
     const rows = await this.dashboardRepository.getRecentTrips(limit);
-    return rows.map((row) => ({
-      id: String(row.id),
-      tripNumber: String(row.tripNumber),
-      source: String(row.source),
-      destination: String(row.destination),
-      status: String(row.status),
-      plannedStartDate: new Date(row.plannedStartDate).toISOString(),
-      revenue: Number(row.revenue ?? 0),
-      driverName: row.driverName ? String(row.driverName) : undefined,
-      vehicleLabel: row.vehicleLabel ? String(row.vehicleLabel) : undefined,
-    }));
+    return rows
+      .map((row) => {
+        const plannedStartDate =
+          this.safeToIso(row.plannedStartDate) ?? this.safeToIso(row.createdAt);
+        if (!plannedStartDate) return null;
+
+        return {
+          id: String(row.id),
+          tripNumber: String(row.tripNumber),
+          source: String(row.source),
+          destination: String(row.destination),
+          status: String(row.status),
+          plannedStartDate,
+          revenue: Number(row.revenue ?? 0),
+          driverName: row.driverName ? String(row.driverName) : undefined,
+          vehicleLabel: row.vehicleLabel ? String(row.vehicleLabel) : undefined,
+        };
+      })
+      .filter((row): row is RecentTripItem => row !== null);
   }
 
   async getBusinessSummary(period: ReportPeriod = 'monthly'): Promise<BusinessSummary> {
@@ -229,6 +237,13 @@ export class DashboardService {
         }),
       ),
     };
+  }
+
+  private safeToIso(value: unknown): string | undefined {
+    if (value == null || value === '') return undefined;
+    const date = value instanceof Date ? value : new Date(String(value));
+    if (Number.isNaN(date.getTime())) return undefined;
+    return date.toISOString();
   }
 
   private mergeMonthlyExpense(

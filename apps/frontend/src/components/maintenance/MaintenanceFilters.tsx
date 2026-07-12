@@ -33,7 +33,7 @@ export function MaintenanceFilters({ value, onChange }: MaintenanceFiltersProps)
         <SearchInput
           placeholder="Search number, vehicle, vendor..."
           value={value.search ?? ''}
-          onChange={(e) => set({ search: e.target.value })}
+          onChange={(value) => set({ search: value })}
         />
         <Select
           value={value.status || 'all'}
