@@ -7,3 +7,4 @@ export * from './vehicle';
 export * from './fuel-expense';
 export * from './dashboard';
 export * from './settings';
+export * from './reports';

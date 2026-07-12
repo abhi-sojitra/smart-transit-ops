@@ -19,6 +19,7 @@ import { PermissionsModule } from './modules/permissions/permissions.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { ReportsModule } from './modules/reports/reports.module';
 import { envValidationSchema } from './config/env.validation';
 import { HealthController } from './health.controller';
 
@@ -47,6 +48,7 @@ import { HealthController } from './health.controller';
     TripModule,
     DashboardModule,
     AnalyticsModule,
+    ReportsModule,
   ],
   controllers: [HealthController],
 })
