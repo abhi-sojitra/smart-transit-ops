@@ -16,7 +16,8 @@
     "seed:all": "yarn seed && yarn seed:fuel-expense",
     "test": "jest --config jest.config.ts",
     "test:watch": "jest --config jest.config.ts --watch",
-    "test:cov": "jest --config jest.config.ts --coverage"
+    "test:cov": "jest --config jest.config.ts --coverage",
+    "test:trip": "jest --config ./jest.config.ts --testPathPattern=modules/trip --coverage"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.12",

@@ -13,9 +13,12 @@ const config: Config = {
     'src/modules/driver/controller/**/*.(t|j)s',
     'src/modules/fuel/**/*.(t|j)s',
     'src/modules/expense/**/*.(t|j)s',
+    'src/modules/trip/**/*.(t|j)s',
     'src/repositories/fuel.repository.ts',
     'src/repositories/expense.repository.ts',
     '!src/modules/driver/**/*.spec.ts',
+    '!src/modules/trip/tests/**',
+    '!src/modules/trip/trip.module.ts',
     '!**/*.module.ts',
     '!**/dto/**',
     '!**/*.mapper.ts',
@@ -32,6 +35,7 @@ const config: Config = {
   testEnvironment: 'node',
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
+    '^@transitops/shared-types$': '<rootDir>/../../packages/shared-types/src/index.ts',
   },
 };
 

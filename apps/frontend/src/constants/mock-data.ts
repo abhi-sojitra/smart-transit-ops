@@ -24,6 +24,7 @@ export const mockVehicles: Vehicle[] = [
     status: VehicleStatus.ACTIVE,
     lastService: '2026-06-12',
     mileage: 84210,
+    maxCapacity: 18000,
   },
   {
     id: '2',
@@ -33,6 +34,7 @@ export const mockVehicles: Vehicle[] = [
     status: VehicleStatus.MAINTENANCE,
     lastService: '2026-07-01',
     mileage: 120430,
+    maxCapacity: 20000,
   },
   {
     id: '3',
@@ -42,6 +44,7 @@ export const mockVehicles: Vehicle[] = [
     status: VehicleStatus.ON_TRIP,
     lastService: '2026-05-20',
     mileage: 45120,
+    maxCapacity: 17000,
   },
   {
     id: '4',
@@ -51,6 +54,7 @@ export const mockVehicles: Vehicle[] = [
     status: VehicleStatus.AVAILABLE,
     lastService: '2026-04-18',
     mileage: 156890,
+    maxCapacity: 19000,
   },
 ];
 

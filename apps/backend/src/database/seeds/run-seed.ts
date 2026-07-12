@@ -9,6 +9,7 @@ import { DriverSchema } from '../../modules/driver/schema/driver.schema';
 import { buildDemoDrivers } from '../../modules/driver/seeds/driver.seed';
 import { DEFAULT_ROLES } from './roles.seed';
 import { TEST_USERS } from './test-users.seed';
+import { seedTripDispatcherData } from './trip.seed';
 
 loadEnv({ path: resolve(__dirname, '../../../.env') });
 
@@ -86,6 +87,8 @@ async function runSeed() {
       { upsert: true, new: true },
     );
   }
+
+  await seedTripDispatcherData(mongoose);
 
   console.log('Seed completed successfully.');
   await mongoose.disconnect();
