@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -20,27 +20,50 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useAvailableDrivers, useAvailableVehicles } from '@/hooks/use-trips';
 import type { CreateTripInput } from '@/types/trip';
 
-const schema = z
-  .object({
-    source: z.string().min(2, 'Source is required'),
-    destination: z.string().min(2, 'Destination is required'),
-    vehicleId: z.string().min(1, 'Vehicle is required'),
-    driverId: z.string().min(1, 'Driver is required'),
-    cargoName: z.string().min(1, 'Cargo name is required'),
-    cargoWeight: z.coerce.number().min(0, 'Weight must be >= 0'),
-    cargoType: z.nativeEnum(CargoType),
-    plannedDistance: z.coerce.number().min(1, 'Distance is required'),
-    plannedStartDate: z.string().min(1, 'Start date is required'),
-    plannedEndDate: z.string().min(1, 'End date is required'),
-    estimatedRevenue: z.coerce.number().min(0, 'Revenue must be >= 0'),
-    notes: z.string().optional(),
-  })
-  .refine((values) => new Date(values.plannedEndDate) >= new Date(values.plannedStartDate), {
-    message: 'End date must be after start date',
-    path: ['plannedEndDate'],
-  });
+const tripFormBaseSchema = z.object({
+  source: z.string().min(2, 'Source is required'),
+  destination: z.string().min(2, 'Destination is required'),
+  vehicleId: z.string().min(1, 'Vehicle is required'),
+  driverId: z.string().min(1, 'Driver is required'),
+  cargoName: z.string().min(1, 'Cargo name is required'),
+  cargoWeight: z.coerce.number().min(0, 'Weight must be >= 0'),
+  cargoType: z.nativeEnum(CargoType),
+  plannedDistance: z.coerce.number().min(1, 'Distance is required'),
+  plannedStartDate: z.string().min(1, 'Start date is required'),
+  plannedEndDate: z.string().min(1, 'End date is required'),
+  estimatedRevenue: z.coerce.number().min(0, 'Revenue must be >= 0'),
+  notes: z.string().optional(),
+});
 
-export type TripFormValues = z.infer<typeof schema>;
+export type TripFormValues = z.infer<typeof tripFormBaseSchema>;
+
+function createTripSchema(getCapacity: (vehicleId: string) => number | undefined) {
+  return tripFormBaseSchema
+    .refine((values) => new Date(values.plannedEndDate) >= new Date(values.plannedStartDate), {
+      message: 'End date must be after start date',
+      path: ['plannedEndDate'],
+    })
+    .superRefine((values, ctx) => {
+      if (!values.vehicleId) return;
+      const capacity = getCapacity(values.vehicleId);
+      if (capacity === undefined) return;
+      if (capacity <= 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['vehicleId'],
+          message: 'Vehicle has no max load capacity configured',
+        });
+        return;
+      }
+      if (values.cargoWeight > capacity) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['cargoWeight'],
+          message: `Cargo weight exceeds vehicle capacity (${capacity}).`,
+        });
+      }
+    });
+}
 
 interface TripFormProps {
   defaultValues?: Partial<TripFormValues>;
@@ -74,6 +97,19 @@ export function TripForm({ defaultValues, submitLabel = 'Save trip', loading, on
     isError: driversError,
     isSuccess: driversReady,
   } = useAvailableDrivers();
+
+  const vehiclesRef = useRef(vehicles);
+  vehiclesRef.current = vehicles;
+
+  const schema = useMemo(
+    () =>
+      createTripSchema((vehicleId) => {
+        const vehicle = vehiclesRef.current.find((item) => assetId(item) === vehicleId);
+        if (!vehicle) return undefined;
+        return Number(vehicle.maxCapacity) || 0;
+      }),
+    [],
+  );
 
   const {
     register,

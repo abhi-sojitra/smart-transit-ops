@@ -56,7 +56,9 @@ export class TripValidators {
 
     const capacity =
       Number(input.vehicle.maxCapacity) || Number(input.vehicle.seatingCapacity) || 0;
-    if (capacity > 0 && input.cargoWeight > capacity) {
+    if (capacity <= 0) {
+      errors.push('Vehicle has no max load capacity configured');
+    } else if (input.cargoWeight > capacity) {
       errors.push(
         `Cargo weight (${input.cargoWeight}) exceeds vehicle capacity (${capacity})`,
       );

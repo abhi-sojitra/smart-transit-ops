@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { AxiosError } from 'axios';
 import { fleetApi } from '@/services/fleet';
 import type { Vehicle, VehicleFiltersState, VehicleFormValues } from '@/types/fleet';
+import { isVehicleUniqueConflict } from '@/lib/vehicle-form-errors';
 
 export const fleetKeys = {
   all: ['fleet'] as const,
@@ -24,6 +25,10 @@ function errorMessage(error: unknown, fallback: string): string {
   }
   if (error instanceof Error) return error.message;
   return fallback;
+}
+
+function shouldToastVehicleError(error: unknown): boolean {
+  return !isVehicleUniqueConflict(error);
 }
 
 export function useFleetQuery(filters: VehicleFiltersState) {
@@ -65,7 +70,11 @@ export function useCreateVehicleMutation() {
       toast.success('Vehicle created successfully');
       void queryClient.invalidateQueries({ queryKey: fleetKeys.all });
     },
-    onError: (error) => toast.error(errorMessage(error, 'Failed to create vehicle')),
+    onError: (error) => {
+      if (shouldToastVehicleError(error)) {
+        toast.error(errorMessage(error, 'Failed to create vehicle'));
+      }
+    },
   });
 }
 
@@ -79,7 +88,11 @@ export function useUpdateVehicleMutation(id: string) {
       void queryClient.invalidateQueries({ queryKey: fleetKeys.lists() });
       void queryClient.invalidateQueries({ queryKey: fleetKeys.statistics() });
     },
-    onError: (error) => toast.error(errorMessage(error, 'Failed to update vehicle')),
+    onError: (error) => {
+      if (shouldToastVehicleError(error)) {
+        toast.error(errorMessage(error, 'Failed to update vehicle'));
+      }
+    },
   });
 }
 

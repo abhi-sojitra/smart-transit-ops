@@ -25,6 +25,7 @@ import {
   FuelType,
   type VehicleFormValues,
 } from '@/types/fleet';
+import { parseVehicleUniqueConflict } from '@/lib/vehicle-form-errors';
 
 const vehicleFormSchema = z
   .object({
@@ -195,6 +196,7 @@ export function VehicleForm({
     register,
     handleSubmit,
     setValue,
+    setError,
     watch,
     formState: { errors },
   } = useForm<VehicleFormSchema>({
@@ -212,6 +214,7 @@ export function VehicleForm({
       make: values.make.trim(),
       model: values.model.trim(),
       color: optional(values.color),
+      maxCapacity: Number(values.maxCapacity),
       purchaseDate: optional(values.purchaseDate),
       lastServiceDate: optional(values.lastServiceDate),
       nextServiceDueDate: optional(values.nextServiceDueDate),
@@ -235,7 +238,16 @@ export function VehicleForm({
         initial={reduceMotion ? false : 'hidden'}
         animate="show"
         onSubmit={handleSubmit(async (values) => {
-          await onSubmit(clean(values));
+          try {
+            await onSubmit(clean(values));
+          } catch (error) {
+            const conflict = parseVehicleUniqueConflict(error);
+            if (conflict) {
+              setError(conflict.field, { type: 'server', message: conflict.message });
+              return;
+            }
+            throw error;
+          }
         })}
       >
         <Section title="Vehicle Identity">

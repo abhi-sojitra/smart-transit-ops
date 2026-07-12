@@ -255,7 +255,12 @@ export class DriverService {
       if (existing.status === DriverStatus.SUSPENDED) {
         throw new BadRequestException('Suspended driver cannot become Available');
       }
-      if (isLicenseExpired(licenseExpiryDate)) {
+      // ON_TRIP → AVAILABLE is allowed when a trip is completed or cancelled,
+      // even if the license expired mid-trip.
+      if (
+        existing.status !== DriverStatus.ON_TRIP &&
+        isLicenseExpired(licenseExpiryDate)
+      ) {
         throw new BadRequestException('Expired license cannot become Available');
       }
     }
